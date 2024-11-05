@@ -28,7 +28,7 @@ public final class MachinesInstallPatchesMockTests {
     @Test
     public void testInstallPatches() throws Exception {
         String responseStr
-            = "{\"status\":\"Succeeded\",\"installationActivityId\":\"vutpthjoxo\",\"rebootStatus\":\"Failed\",\"maintenanceWindowExceeded\":true,\"excludedPatchCount\":1976615224,\"notSelectedPatchCount\":791689891,\"pendingPatchCount\":1015646968,\"installedPatchCount\":2072188488,\"failedPatchCount\":1062811723,\"startDateTime\":\"2021-01-28T22:40:19Z\",\"lastModifiedDateTime\":\"2021-11-12T05:30:54Z\",\"startedBy\":\"User\",\"patchServiceUsed\":\"YUM\",\"osType\":\"Linux\"}";
+            = "{\"status\":\"CompletedWithWarnings\",\"installationActivityId\":\"zhlctddunqndyfpc\",\"rebootStatus\":\"Completed\",\"maintenanceWindowExceeded\":true,\"excludedPatchCount\":1026325475,\"notSelectedPatchCount\":479383954,\"pendingPatchCount\":797085028,\"installedPatchCount\":628277509,\"failedPatchCount\":459036091,\"startDateTime\":\"2021-11-30T12:02:38Z\",\"lastModifiedDateTime\":\"2021-04-06T19:09:14Z\",\"startedBy\":\"User\",\"patchServiceUsed\":\"WU_WSUS\",\"osType\":\"Windows\"}";
 
         HttpClient httpClient
             = response -> Mono.just(new MockHttpResponse(response, 200, responseStr.getBytes(StandardCharsets.UTF_8)));
@@ -38,21 +38,23 @@ public final class MachinesInstallPatchesMockTests {
                 new AzureProfile("", "", AzureEnvironment.AZURE));
 
         MachineInstallPatchesResult response = manager.machines()
-            .installPatches("rk", "alywjhhgdn",
-                new MachineInstallPatchesParameters().withMaximumDuration(Duration.parse("PT175H6M53S"))
+            .installPatches("vizbfhfo", "vacqpbtuodxesz",
+                new MachineInstallPatchesParameters().withMaximumDuration(Duration.parse("PT222H10M48S"))
                     .withRebootSetting(VMGuestPatchRebootSetting.ALWAYS)
                     .withWindowsParameters(new WindowsParameters()
-                        .withClassificationsToInclude(Arrays.asList(VMGuestPatchClassificationWindows.SERVICE_PACK))
-                        .withKbNumbersToInclude(Arrays.asList("iloxggdufiq", "dieuzaofj", "hvcyyysfg", "otcubi"))
-                        .withKbNumbersToExclude(Arrays.asList("ipwoqonmacjek", "izsh", "vcimpev", "gmblrri"))
-                        .withExcludeKbsRequiringReboot(false)
-                        .withMaxPatchPublishDate(OffsetDateTime.parse("2021-02-03T11:24:04Z")))
+                        .withClassificationsToInclude(Arrays.asList(VMGuestPatchClassificationWindows.SERVICE_PACK,
+                            VMGuestPatchClassificationWindows.UPDATES, VMGuestPatchClassificationWindows.FEATURE_PACK,
+                            VMGuestPatchClassificationWindows.CRITICAL))
+                        .withKbNumbersToInclude(Arrays.asList("lzkwrrwoy", "qucwyhahnom", "rkywuhpsvfuu", "utlwexxwla"))
+                        .withKbNumbersToExclude(Arrays.asList("exzsrz", "gepqtybbwwpg", "akchzyvlixqnrk"))
+                        .withExcludeKbsRequiringReboot(true)
+                        .withMaxPatchPublishDate(OffsetDateTime.parse("2021-10-27T02:34:41Z")))
                     .withLinuxParameters(new LinuxParameters()
                         .withClassificationsToInclude(Arrays.asList(VMGuestPatchClassificationLinux.OTHER,
-                            VMGuestPatchClassificationLinux.CRITICAL, VMGuestPatchClassificationLinux.CRITICAL,
+                            VMGuestPatchClassificationLinux.CRITICAL, VMGuestPatchClassificationLinux.OTHER,
                             VMGuestPatchClassificationLinux.CRITICAL))
-                        .withPackageNameMasksToInclude(Arrays.asList("fscjfnynszquji", "dvoqyt"))
-                        .withPackageNameMasksToExclude(Arrays.asList("owbb"))),
+                        .withPackageNameMasksToInclude(Arrays.asList("wq", "ntvlwijpsttexo", "qpwcyyufmh"))
+                        .withPackageNameMasksToExclude(Arrays.asList("cuwmqsp"))),
                 com.azure.core.util.Context.NONE);
 
     }

@@ -15,17 +15,17 @@ public final class PrivateLinkScopeValidationDetailsInnerTests {
     @org.junit.jupiter.api.Test
     public void testDeserialize() throws Exception {
         PrivateLinkScopeValidationDetailsInner model = BinaryData.fromString(
-            "{\"id\":\"eznoig\",\"publicNetworkAccess\":\"Disabled\",\"connectionDetails\":[{\"id\":\"wkpnbsaz\",\"privateIpAddress\":\"joqkagfhsxt\",\"linkIdentifier\":\"ugzxnf\",\"groupId\":\"zpxdt\",\"memberName\":\"dm\"}]}")
+            "{\"id\":\"dvk\",\"publicNetworkAccess\":\"Enabled\",\"connectionDetails\":[{\"id\":\"nxcvds\",\"privateIpAddress\":\"njivolvtnovq\",\"linkIdentifier\":\"gemjdftuljltdu\",\"groupId\":\"amtmcz\",\"memberName\":\"m\"}]}")
             .toObject(PrivateLinkScopeValidationDetailsInner.class);
-        Assertions.assertEquals(PublicNetworkAccessType.DISABLED, model.publicNetworkAccess());
+        Assertions.assertEquals(PublicNetworkAccessType.ENABLED, model.publicNetworkAccess());
     }
 
     @org.junit.jupiter.api.Test
     public void testSerialize() throws Exception {
         PrivateLinkScopeValidationDetailsInner model
-            = new PrivateLinkScopeValidationDetailsInner().withPublicNetworkAccess(PublicNetworkAccessType.DISABLED)
+            = new PrivateLinkScopeValidationDetailsInner().withPublicNetworkAccess(PublicNetworkAccessType.ENABLED)
                 .withConnectionDetails(Arrays.asList(new ConnectionDetail()));
         model = BinaryData.fromObject(model).toObject(PrivateLinkScopeValidationDetailsInner.class);
-        Assertions.assertEquals(PublicNetworkAccessType.DISABLED, model.publicNetworkAccess());
+        Assertions.assertEquals(PublicNetworkAccessType.ENABLED, model.publicNetworkAccess());
     }
 }

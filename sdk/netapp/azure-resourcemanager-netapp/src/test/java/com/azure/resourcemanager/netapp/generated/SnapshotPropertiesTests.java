@@ -10,9 +10,8 @@ import com.azure.resourcemanager.netapp.fluent.models.SnapshotProperties;
 public final class SnapshotPropertiesTests {
     @org.junit.jupiter.api.Test
     public void testDeserialize() throws Exception {
-        SnapshotProperties model = BinaryData
-            .fromString(
-                "{\"snapshotId\":\"pnppfuf\",\"created\":\"2021-04-27T03:55:43Z\",\"provisioningState\":\"mh\"}")
+        SnapshotProperties model = BinaryData.fromString(
+            "{\"snapshotId\":\"ncvokotllxdyhg\",\"created\":\"2021-10-28T18:31:30Z\",\"provisioningState\":\"ogjltdtbnnhad\"}")
             .toObject(SnapshotProperties.class);
     }
 

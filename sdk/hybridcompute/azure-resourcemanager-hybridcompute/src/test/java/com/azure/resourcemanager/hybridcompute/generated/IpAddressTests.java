@@ -11,19 +11,18 @@ import org.junit.jupiter.api.Assertions;
 public final class IpAddressTests {
     @org.junit.jupiter.api.Test
     public void testDeserialize() throws Exception {
-        IpAddress model = BinaryData
-            .fromString(
-                "{\"address\":\"ggzfbu\",\"ipAddressVersion\":\"mvfaxkffeiith\",\"subnet\":{\"addressPrefix\":\"ez\"}}")
+        IpAddress model = BinaryData.fromString(
+            "{\"address\":\"enhwlrs\",\"ipAddressVersion\":\"rzpwvlqdqgbiq\",\"subnet\":{\"addressPrefix\":\"hkaetcktvfc\"}}")
             .toObject(IpAddress.class);
-        Assertions.assertEquals("ggzfbu", model.address());
-        Assertions.assertEquals("mvfaxkffeiith", model.ipAddressVersion());
+        Assertions.assertEquals("enhwlrs", model.address());
+        Assertions.assertEquals("rzpwvlqdqgbiq", model.ipAddressVersion());
     }
 
     @org.junit.jupiter.api.Test
     public void testSerialize() throws Exception {
-        IpAddress model = new IpAddress().withAddress("ggzfbu").withIpAddressVersion("mvfaxkffeiith");
+        IpAddress model = new IpAddress().withAddress("enhwlrs").withIpAddressVersion("rzpwvlqdqgbiq");
         model = BinaryData.fromObject(model).toObject(IpAddress.class);
-        Assertions.assertEquals("ggzfbu", model.address());
-        Assertions.assertEquals("mvfaxkffeiith", model.ipAddressVersion());
+        Assertions.assertEquals("enhwlrs", model.address());
+        Assertions.assertEquals("rzpwvlqdqgbiq", model.ipAddressVersion());
     }
 }

@@ -1,14 +1,32 @@
 # Release History
 
-## 12.20.0-beta.1 (Unreleased)
+## 12.20.0 (2024-07-18)
 
 ### Features Added
-
-### Breaking Changes
-
-### Bugs Fixed
+- Added support for bearer token challenges.
+- Added support for service version 2024-08-04.
 
 ### Other Changes
+
+#### Dependency Updates
+- Upgraded `azure-core` from `1.49.1` to version `1.50.0`.
+- Upgraded `azure-core-http-netty` from `1.15.1` to version `1.15.2`.
+- Upgraded `azure-storage-blob` from `12.26.1` to version `12.27.0`.
+
+## 12.20.0-beta.1 (2024-06-11)
+
+### Features Added
+- Added support for bearer token challenges.
+- Added support for service version 2024-08-04.
+
+## 12.19.1 (2024-06-06)
+
+### Other Changes
+
+#### Dependency Updates
+- Upgraded `azure-core` from `1.49.0` to version `1.49.1`.
+- Upgraded `azure-core-http-netty` from `1.15.0` to version `1.15.1`.
+- Upgraded `azure-storage-blob` from `12.26.0` to version `12.26.1`.
 
 ## 12.19.0 (2024-05-15)
 

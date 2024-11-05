@@ -12,22 +12,24 @@ public final class DailyScheduleTests {
     @org.junit.jupiter.api.Test
     public void testDeserialize() throws Exception {
         DailySchedule model = BinaryData.fromString(
-            "{\"snapshotsToKeep\":1081662268,\"hour\":535447173,\"minute\":88116741,\"usedBytes\":4291870996342138092}")
+            "{\"snapshotsToKeep\":510695304,\"hour\":1199723350,\"minute\":216115077,\"usedBytes\":2718040045935235650}")
             .toObject(DailySchedule.class);
-        Assertions.assertEquals(1081662268, model.snapshotsToKeep());
-        Assertions.assertEquals(535447173, model.hour());
-        Assertions.assertEquals(88116741, model.minute());
-        Assertions.assertEquals(4291870996342138092L, model.usedBytes());
+        Assertions.assertEquals(510695304, model.snapshotsToKeep());
+        Assertions.assertEquals(1199723350, model.hour());
+        Assertions.assertEquals(216115077, model.minute());
+        Assertions.assertEquals(2718040045935235650L, model.usedBytes());
     }
 
     @org.junit.jupiter.api.Test
     public void testSerialize() throws Exception {
-        DailySchedule model = new DailySchedule().withSnapshotsToKeep(1081662268).withHour(535447173)
-            .withMinute(88116741).withUsedBytes(4291870996342138092L);
+        DailySchedule model = new DailySchedule().withSnapshotsToKeep(510695304)
+            .withHour(1199723350)
+            .withMinute(216115077)
+            .withUsedBytes(2718040045935235650L);
         model = BinaryData.fromObject(model).toObject(DailySchedule.class);
-        Assertions.assertEquals(1081662268, model.snapshotsToKeep());
-        Assertions.assertEquals(535447173, model.hour());
-        Assertions.assertEquals(88116741, model.minute());
-        Assertions.assertEquals(4291870996342138092L, model.usedBytes());
+        Assertions.assertEquals(510695304, model.snapshotsToKeep());
+        Assertions.assertEquals(1199723350, model.hour());
+        Assertions.assertEquals(216115077, model.minute());
+        Assertions.assertEquals(2718040045935235650L, model.usedBytes());
     }
 }

@@ -21,7 +21,7 @@ public final class NetworkProfilesGetWithResponseMockTests {
     @Test
     public void testGetWithResponse() throws Exception {
         String responseStr
-            = "{\"networkInterfaces\":[{\"ipAddresses\":[{\"address\":\"xasicddyvvjskg\",\"ipAddressVersion\":\"ocwah\",\"subnet\":{}},{\"address\":\"atjeaahh\",\"ipAddressVersion\":\"hhnakzybbj\",\"subnet\":{}}]},{\"ipAddresses\":[{\"address\":\"syxkyxvxevblb\",\"ipAddressVersion\":\"dnlj\",\"subnet\":{}}]},{\"ipAddresses\":[{\"address\":\"aulx\",\"ipAddressVersion\":\"smjbnkppxyn\",\"subnet\":{}},{\"address\":\"svxeizzgwklnsr\",\"ipAddressVersion\":\"feycxcktp\",\"subnet\":{}}]},{\"ipAddresses\":[{\"address\":\"teeammxqiekkkzd\",\"ipAddressVersion\":\"tkgdojbmxva\",\"subnet\":{}},{\"address\":\"fdeesvecuijpxtx\",\"ipAddressVersion\":\"wprtu\",\"subnet\":{}},{\"address\":\"awddjibab\",\"ipAddressVersion\":\"ititvtzeexavoxt\",\"subnet\":{}},{\"address\":\"ecdmdqbwpy\",\"ipAddressVersion\":\"tgsfja\",\"subnet\":{}}]}]}";
+            = "{\"networkInterfaces\":[{\"ipAddresses\":[{\"address\":\"uyilflqoiquvrehm\",\"ipAddressVersion\":\"jhvsujztczyt\",\"subnet\":{}},{\"address\":\"w\",\"ipAddressVersion\":\"uunfprnjletlxsm\",\"subnet\":{}},{\"address\":\"do\",\"ipAddressVersion\":\"fa\",\"subnet\":{}},{\"address\":\"aziynknlqwzdv\",\"ipAddressVersion\":\"w\",\"subnet\":{}}]},{\"ipAddresses\":[{\"address\":\"dtmaa\",\"ipAddressVersion\":\"uhuxylrjvmtyg\",\"subnet\":{}},{\"address\":\"zyos\",\"ipAddressVersion\":\"p\",\"subnet\":{}},{\"address\":\"kfkyjp\",\"ipAddressVersion\":\"pbpssdfpp\",\"subnet\":{}}]},{\"ipAddresses\":[{\"address\":\"eyujtvczkcnyxrx\",\"ipAddressVersion\":\"njdxvglnkvxl\",\"subnet\":{}},{\"address\":\"glqivbgkcv\",\"ipAddressVersion\":\"pzvuqdflvo\",\"subnet\":{}},{\"address\":\"pfpubcpzgpx\",\"ipAddressVersion\":\"vhjknidi\",\"subnet\":{}},{\"address\":\"jxgpnrhgovfg\",\"ipAddressVersion\":\"kqmhhaowjr\",\"subnet\":{}}]}]}";
 
         HttpClient httpClient
             = response -> Mono.just(new MockHttpResponse(response, 200, responseStr.getBytes(StandardCharsets.UTF_8)));
@@ -31,10 +31,11 @@ public final class NetworkProfilesGetWithResponseMockTests {
                 new AzureProfile("", "", AzureEnvironment.AZURE));
 
         NetworkProfile response = manager.networkProfiles()
-            .getWithResponse("y", "uxakjsqzhzbezk", com.azure.core.util.Context.NONE)
+            .getWithResponse("zqaclna", "xbiygnugjknfsmf", com.azure.core.util.Context.NONE)
             .getValue();
 
-        Assertions.assertEquals("xasicddyvvjskg", response.networkInterfaces().get(0).ipAddresses().get(0).address());
-        Assertions.assertEquals("ocwah", response.networkInterfaces().get(0).ipAddresses().get(0).ipAddressVersion());
+        Assertions.assertEquals("uyilflqoiquvrehm", response.networkInterfaces().get(0).ipAddresses().get(0).address());
+        Assertions.assertEquals("jhvsujztczyt",
+            response.networkInterfaces().get(0).ipAddresses().get(0).ipAddressVersion());
     }
 }

@@ -13,21 +13,21 @@ public final class AgentUpgradeTests {
     @org.junit.jupiter.api.Test
     public void testDeserialize() throws Exception {
         AgentUpgrade model = BinaryData.fromString(
-            "{\"desiredVersion\":\"dkfthwxmnt\",\"correlationId\":\"a1fa0ce1-66ed-48a3-9ddb-c8274f5fb48c\",\"enableAutomaticUpgrade\":false,\"lastAttemptDesiredVersion\":\"pvkmijcmmxdcuf\",\"lastAttemptTimestamp\":\"2021-05-13T13:25:47Z\",\"lastAttemptStatus\":\"Failed\",\"lastAttemptMessage\":\"mzidnsezcxtb\"}")
+            "{\"desiredVersion\":\"seiphe\",\"correlationId\":\"ea0ed09e-8ff9-4c40-9f77-b42c5a7d8586\",\"enableAutomaticUpgrade\":true,\"lastAttemptDesiredVersion\":\"eyy\",\"lastAttemptTimestamp\":\"2021-09-18T17:01:56Z\",\"lastAttemptStatus\":\"Failed\",\"lastAttemptMessage\":\"lwtgrhpdj\"}")
             .toObject(AgentUpgrade.class);
-        Assertions.assertEquals("dkfthwxmnt", model.desiredVersion());
-        Assertions.assertEquals(UUID.fromString("a1fa0ce1-66ed-48a3-9ddb-c8274f5fb48c"), model.correlationId());
-        Assertions.assertEquals(false, model.enableAutomaticUpgrade());
+        Assertions.assertEquals("seiphe", model.desiredVersion());
+        Assertions.assertEquals(UUID.fromString("ea0ed09e-8ff9-4c40-9f77-b42c5a7d8586"), model.correlationId());
+        Assertions.assertEquals(true, model.enableAutomaticUpgrade());
     }
 
     @org.junit.jupiter.api.Test
     public void testSerialize() throws Exception {
-        AgentUpgrade model = new AgentUpgrade().withDesiredVersion("dkfthwxmnt")
-            .withCorrelationId(UUID.fromString("a1fa0ce1-66ed-48a3-9ddb-c8274f5fb48c"))
-            .withEnableAutomaticUpgrade(false);
+        AgentUpgrade model = new AgentUpgrade().withDesiredVersion("seiphe")
+            .withCorrelationId(UUID.fromString("ea0ed09e-8ff9-4c40-9f77-b42c5a7d8586"))
+            .withEnableAutomaticUpgrade(true);
         model = BinaryData.fromObject(model).toObject(AgentUpgrade.class);
-        Assertions.assertEquals("dkfthwxmnt", model.desiredVersion());
-        Assertions.assertEquals(UUID.fromString("a1fa0ce1-66ed-48a3-9ddb-c8274f5fb48c"), model.correlationId());
-        Assertions.assertEquals(false, model.enableAutomaticUpgrade());
+        Assertions.assertEquals("seiphe", model.desiredVersion());
+        Assertions.assertEquals(UUID.fromString("ea0ed09e-8ff9-4c40-9f77-b42c5a7d8586"), model.correlationId());
+        Assertions.assertEquals(true, model.enableAutomaticUpgrade());
     }
 }

@@ -22,7 +22,7 @@ public final class PrivateEndpointConnectionsListByPrivateLinkScopeMockTests {
     @Test
     public void testListByPrivateLinkScope() throws Exception {
         String responseStr
-            = "{\"value\":[{\"properties\":{\"privateEndpoint\":{\"id\":\"tlaprltzkatb\"},\"privateLinkServiceConnectionState\":{\"status\":\"mznnbsoqeqalarvl\",\"description\":\"gunbtgfebwlnbm\",\"actionsRequired\":\"reeudzqavb\"},\"provisioningState\":\"qmjxlyyzglgouwtl\",\"groupIds\":[\"yuojqtobaxk\",\"eytu\",\"lbfjkwr\",\"snkq\"]},\"id\":\"syrq\",\"name\":\"njqhdenxa\",\"type\":\"l\"}]}";
+            = "{\"value\":[{\"properties\":{\"privateEndpoint\":{\"id\":\"nfszpyglqdhmrjz\"},\"privateLinkServiceConnectionState\":{\"status\":\"l\",\"description\":\"xpjb\",\"actionsRequired\":\"psjoqcjenk\"},\"provisioningState\":\"fq\",\"groupIds\":[\"qxfx\",\"elgcmpzqjhhhqx\",\"w\",\"vcacoyv\"]},\"id\":\"bsizus\",\"name\":\"szlbscm\",\"type\":\"lzijiufehgmvflnw\"}]}";
 
         HttpClient httpClient
             = response -> Mono.just(new MockHttpResponse(response, 200, responseStr.getBytes(StandardCharsets.UTF_8)));
@@ -31,13 +31,13 @@ public final class PrivateEndpointConnectionsListByPrivateLinkScopeMockTests {
             .authenticate(tokenRequestContext -> Mono.just(new AccessToken("this_is_a_token", OffsetDateTime.MAX)),
                 new AzureProfile("", "", AzureEnvironment.AZURE));
 
-        PagedIterable<PrivateEndpointConnection> response = manager.privateEndpointConnections()
-            .listByPrivateLinkScope("xuzvoamktcqi", "smgbzahgxqdl", com.azure.core.util.Context.NONE);
+        PagedIterable<PrivateEndpointConnection> response
+            = manager.privateEndpointConnections().listByPrivateLinkScope("rl", "h", com.azure.core.util.Context.NONE);
 
-        Assertions.assertEquals("tlaprltzkatb", response.iterator().next().properties().privateEndpoint().id());
-        Assertions.assertEquals("mznnbsoqeqalarvl",
+        Assertions.assertEquals("nfszpyglqdhmrjz", response.iterator().next().properties().privateEndpoint().id());
+        Assertions.assertEquals("l",
             response.iterator().next().properties().privateLinkServiceConnectionState().status());
-        Assertions.assertEquals("gunbtgfebwlnbm",
+        Assertions.assertEquals("xpjb",
             response.iterator().next().properties().privateLinkServiceConnectionState().description());
     }
 }

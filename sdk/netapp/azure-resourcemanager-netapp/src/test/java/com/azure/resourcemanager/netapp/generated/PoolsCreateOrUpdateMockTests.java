@@ -6,65 +6,54 @@ package com.azure.resourcemanager.netapp.generated;
 
 import com.azure.core.credential.AccessToken;
 import com.azure.core.http.HttpClient;
-import com.azure.core.http.HttpHeaders;
-import com.azure.core.http.HttpRequest;
-import com.azure.core.http.HttpResponse;
 import com.azure.core.management.AzureEnvironment;
 import com.azure.core.management.profile.AzureProfile;
+import com.azure.core.test.http.MockHttpResponse;
 import com.azure.resourcemanager.netapp.NetAppFilesManager;
 import com.azure.resourcemanager.netapp.models.CapacityPool;
 import com.azure.resourcemanager.netapp.models.EncryptionType;
 import com.azure.resourcemanager.netapp.models.QosType;
 import com.azure.resourcemanager.netapp.models.ServiceLevel;
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mockito;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public final class PoolsCreateOrUpdateMockTests {
     @Test
     public void testCreateOrUpdate() throws Exception {
-        HttpClient httpClient = Mockito.mock(HttpClient.class);
-        HttpResponse httpResponse = Mockito.mock(HttpResponse.class);
-        ArgumentCaptor<HttpRequest> httpRequest = ArgumentCaptor.forClass(HttpRequest.class);
-
         String responseStr
-            = "{\"etag\":\"ajlyjtlvofqzhv\",\"properties\":{\"poolId\":\"ibyfmo\",\"size\":6727856303003361360,\"serviceLevel\":\"StandardZRS\",\"provisioningState\":\"Succeeded\",\"totalThroughputMibps\":78.12518,\"utilizedThroughputMibps\":77.284424,\"qosType\":\"Manual\",\"coolAccess\":false,\"encryptionType\":\"Double\"},\"location\":\"hyzsxjrkamb\",\"tags\":{\"nvuqeqvldspa\":\"egv\",\"kdmflvestmjlx\":\"tjb\",\"zapeewchpx\":\"ril\"},\"id\":\"ktwkuziyc\",\"name\":\"levufuztcktyhj\",\"type\":\"qedcgzulwm\"}";
+            = "{\"etag\":\"tpiymerteea\",\"properties\":{\"poolId\":\"xqiekkkzddrtk\",\"size\":2366436168895450247,\"serviceLevel\":\"Ultra\",\"provisioningState\":\"Succeeded\",\"totalThroughputMibps\":61.797512,\"utilizedThroughputMibps\":14.100099,\"qosType\":\"Manual\",\"coolAccess\":true,\"encryptionType\":\"Single\"},\"location\":\"uwprtujwsawd\",\"tags\":{\"tzeexav\":\"babxvitit\",\"pypqtgsfj\":\"xtfglecdmdqb\",\"db\":\"cbslhhx\",\"irudh\":\"vodhtn\"},\"id\":\"m\",\"name\":\"es\",\"type\":\"kdlpa\"}";
 
-        Mockito.when(httpResponse.getStatusCode()).thenReturn(200);
-        Mockito.when(httpResponse.getHeaders()).thenReturn(new HttpHeaders());
-        Mockito.when(httpResponse.getBody())
-            .thenReturn(Flux.just(ByteBuffer.wrap(responseStr.getBytes(StandardCharsets.UTF_8))));
-        Mockito.when(httpResponse.getBodyAsByteArray())
-            .thenReturn(Mono.just(responseStr.getBytes(StandardCharsets.UTF_8)));
-        Mockito.when(httpClient.send(httpRequest.capture(), Mockito.any())).thenReturn(Mono.defer(() -> {
-            Mockito.when(httpResponse.getRequest()).thenReturn(httpRequest.getValue());
-            return Mono.just(httpResponse);
-        }));
+        HttpClient httpClient
+            = response -> Mono.just(new MockHttpResponse(response, 200, responseStr.getBytes(StandardCharsets.UTF_8)));
+        NetAppFilesManager manager = NetAppFilesManager.configure()
+            .withHttpClient(httpClient)
+            .authenticate(tokenRequestContext -> Mono.just(new AccessToken("this_is_a_token", OffsetDateTime.MAX)),
+                new AzureProfile("", "", AzureEnvironment.AZURE));
 
-        NetAppFilesManager manager = NetAppFilesManager.configure().withHttpClient(httpClient).authenticate(
-            tokenRequestContext -> Mono.just(new AccessToken("this_is_a_token", OffsetDateTime.MAX)),
-            new AzureProfile("", "", AzureEnvironment.AZURE));
+        CapacityPool response = manager.pools()
+            .define("jsqzhzbezk")
+            .withRegion("bbjjidjksyxk")
+            .withExistingNetAppAccount("vbkbxgomf", "juwasqvdaeyyguxa")
+            .withSize(8803950255496155089L)
+            .withServiceLevel(ServiceLevel.ULTRA)
+            .withTags(mapOf("jednlj", "xevbl", "aulx", "age"))
+            .withQosType(QosType.AUTO)
+            .withCoolAccess(false)
+            .withEncryptionType(EncryptionType.SINGLE)
+            .create();
 
-        CapacityPool response = manager.pools().define("evwrdnhfuk").withRegion("oqcaaewdaomdj")
-            .withExistingNetAppAccount("chp", "db").withSize(3770519572473050056L)
-            .withServiceLevel(ServiceLevel.STANDARD).withTags(mapOf("siykzkdncjdxonbz", "jxxkzbrmsgei", "z", "ggcula"))
-            .withQosType(QosType.AUTO).withCoolAccess(false).withEncryptionType(EncryptionType.SINGLE).create();
-
-        Assertions.assertEquals("hyzsxjrkamb", response.location());
-        Assertions.assertEquals("egv", response.tags().get("nvuqeqvldspa"));
-        Assertions.assertEquals(6727856303003361360L, response.size());
-        Assertions.assertEquals(ServiceLevel.STANDARD_ZRS, response.serviceLevel());
+        Assertions.assertEquals("uwprtujwsawd", response.location());
+        Assertions.assertEquals("babxvitit", response.tags().get("tzeexav"));
+        Assertions.assertEquals(2366436168895450247L, response.size());
+        Assertions.assertEquals(ServiceLevel.ULTRA, response.serviceLevel());
         Assertions.assertEquals(QosType.MANUAL, response.qosType());
-        Assertions.assertEquals(false, response.coolAccess());
-        Assertions.assertEquals(EncryptionType.DOUBLE, response.encryptionType());
+        Assertions.assertEquals(true, response.coolAccess());
+        Assertions.assertEquals(EncryptionType.SINGLE, response.encryptionType());
     }
 
     // Use "Map.of" if available

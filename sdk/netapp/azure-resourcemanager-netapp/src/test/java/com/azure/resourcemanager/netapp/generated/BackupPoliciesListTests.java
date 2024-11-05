@@ -16,30 +16,39 @@ public final class BackupPoliciesListTests {
     @org.junit.jupiter.api.Test
     public void testDeserialize() throws Exception {
         BackupPoliciesList model = BinaryData.fromString(
-            "{\"value\":[{\"etag\":\"ofncckwyfzqwhxxb\",\"properties\":{\"backupPolicyId\":\"qa\",\"provisioningState\":\"feqztppriol\",\"dailyBackupsToKeep\":621148688,\"weeklyBackupsToKeep\":1270431726,\"monthlyBackupsToKeep\":929982715,\"volumesAssigned\":1321856720,\"enabled\":false,\"volumeBackups\":[{\"volumeName\":\"obqwcsdbnwdcfh\",\"backupsCount\":1589501712,\"policyEnabled\":true},{\"volumeName\":\"uvglsbjjcanvx\",\"backupsCount\":235845887,\"policyEnabled\":false},{\"volumeName\":\"utncorm\",\"backupsCount\":1945766703,\"policyEnabled\":false}]},\"location\":\"cofudflvkgjub\",\"tags\":{\"nqntorudsgsahm\":\"nnqvsa\",\"rauwjuetaebu\":\"yc\",\"dmovsm\":\"u\"},\"id\":\"l\",\"name\":\"wabm\",\"type\":\"oefki\"}]}")
+            "{\"value\":[{\"etag\":\"vdmovsmzlxwabm\",\"properties\":{\"backupPolicyId\":\"efkifr\",\"provisioningState\":\"puqujmqlgkfbtn\",\"dailyBackupsToKeep\":1601819937,\"weeklyBackupsToKeep\":146248988,\"monthlyBackupsToKeep\":396727385,\"volumesAssigned\":296030091,\"enabled\":true,\"volumeBackups\":[{\"volumeName\":\"tcje\",\"volumeResourceId\":\"twwaezkojvdcpzf\",\"backupsCount\":1481847492,\"policyEnabled\":false},{\"volumeName\":\"ybxarzgszu\",\"volumeResourceId\":\"x\",\"backupsCount\":95404001,\"policyEnabled\":false},{\"volumeName\":\"doamciodhkha\",\"volumeResourceId\":\"khnzbonlw\",\"backupsCount\":332286671,\"policyEnabled\":true},{\"volumeName\":\"kdwbwhkszz\",\"volumeResourceId\":\"rvexztvb\",\"backupsCount\":991988200,\"policyEnabled\":false}]},\"location\":\"aoyzkoow\",\"tags\":{\"uximerqfobw\":\"nguxawqaldsy\",\"r\":\"znkbykutwpfhpagm\",\"kkze\":\"kdsnfdsdoakgtdl\",\"sdsttwvog\":\"dlhewp\"},\"id\":\"bbejdcngqqm\",\"name\":\"akufgmjz\",\"type\":\"wr\"},{\"etag\":\"rtwaenuuzko\",\"properties\":{\"backupPolicyId\":\"minrfdw\",\"provisioningState\":\"uhhziuiefozbhdm\",\"dailyBackupsToKeep\":9753041,\"weeklyBackupsToKeep\":1101350352,\"monthlyBackupsToKeep\":1130868680,\"volumesAssigned\":280296096,\"enabled\":false,\"volumeBackups\":[{\"volumeName\":\"qu\",\"volumeResourceId\":\"hxicslfaoqz\",\"backupsCount\":1413149705,\"policyEnabled\":false}]},\"location\":\"alnswhccsphk\",\"tags\":{\"zbwemh\":\"witqscywuggwoluh\",\"sbrgz\":\"i\",\"ggicccnxqhue\":\"wmsweypqwd\"},\"id\":\"mkttlstvlzywem\",\"name\":\"zrncsdt\",\"type\":\"lusiy\"}]}")
             .toObject(BackupPoliciesList.class);
-        Assertions.assertEquals("cofudflvkgjub", model.value().get(0).location());
-        Assertions.assertEquals("nnqvsa", model.value().get(0).tags().get("nqntorudsgsahm"));
-        Assertions.assertEquals(621148688, model.value().get(0).dailyBackupsToKeep());
-        Assertions.assertEquals(1270431726, model.value().get(0).weeklyBackupsToKeep());
-        Assertions.assertEquals(929982715, model.value().get(0).monthlyBackupsToKeep());
-        Assertions.assertEquals(false, model.value().get(0).enabled());
+        Assertions.assertEquals("aoyzkoow", model.value().get(0).location());
+        Assertions.assertEquals("nguxawqaldsy", model.value().get(0).tags().get("uximerqfobw"));
+        Assertions.assertEquals(1601819937, model.value().get(0).dailyBackupsToKeep());
+        Assertions.assertEquals(146248988, model.value().get(0).weeklyBackupsToKeep());
+        Assertions.assertEquals(396727385, model.value().get(0).monthlyBackupsToKeep());
+        Assertions.assertEquals(true, model.value().get(0).enabled());
     }
 
     @org.junit.jupiter.api.Test
     public void testSerialize() throws Exception {
-        BackupPoliciesList model
-            = new BackupPoliciesList().withValue(Arrays.asList(new BackupPolicyInner().withLocation("cofudflvkgjub")
-                .withTags(mapOf("nqntorudsgsahm", "nnqvsa", "rauwjuetaebu", "yc", "dmovsm", "u"))
-                .withDailyBackupsToKeep(621148688).withWeeklyBackupsToKeep(1270431726)
-                .withMonthlyBackupsToKeep(929982715).withEnabled(false)));
+        BackupPoliciesList model = new BackupPoliciesList().withValue(Arrays.asList(
+            new BackupPolicyInner().withLocation("aoyzkoow")
+                .withTags(mapOf("uximerqfobw", "nguxawqaldsy", "r", "znkbykutwpfhpagm", "kkze", "kdsnfdsdoakgtdl",
+                    "sdsttwvog", "dlhewp"))
+                .withDailyBackupsToKeep(1601819937)
+                .withWeeklyBackupsToKeep(146248988)
+                .withMonthlyBackupsToKeep(396727385)
+                .withEnabled(true),
+            new BackupPolicyInner().withLocation("alnswhccsphk")
+                .withTags(mapOf("zbwemh", "witqscywuggwoluh", "sbrgz", "i", "ggicccnxqhue", "wmsweypqwd"))
+                .withDailyBackupsToKeep(9753041)
+                .withWeeklyBackupsToKeep(1101350352)
+                .withMonthlyBackupsToKeep(1130868680)
+                .withEnabled(false)));
         model = BinaryData.fromObject(model).toObject(BackupPoliciesList.class);
-        Assertions.assertEquals("cofudflvkgjub", model.value().get(0).location());
-        Assertions.assertEquals("nnqvsa", model.value().get(0).tags().get("nqntorudsgsahm"));
-        Assertions.assertEquals(621148688, model.value().get(0).dailyBackupsToKeep());
-        Assertions.assertEquals(1270431726, model.value().get(0).weeklyBackupsToKeep());
-        Assertions.assertEquals(929982715, model.value().get(0).monthlyBackupsToKeep());
-        Assertions.assertEquals(false, model.value().get(0).enabled());
+        Assertions.assertEquals("aoyzkoow", model.value().get(0).location());
+        Assertions.assertEquals("nguxawqaldsy", model.value().get(0).tags().get("uximerqfobw"));
+        Assertions.assertEquals(1601819937, model.value().get(0).dailyBackupsToKeep());
+        Assertions.assertEquals(146248988, model.value().get(0).weeklyBackupsToKeep());
+        Assertions.assertEquals(396727385, model.value().get(0).monthlyBackupsToKeep());
+        Assertions.assertEquals(true, model.value().get(0).enabled());
     }
 
     // Use "Map.of" if available

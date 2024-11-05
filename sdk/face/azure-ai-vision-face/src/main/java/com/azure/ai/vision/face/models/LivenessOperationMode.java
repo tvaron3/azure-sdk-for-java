@@ -5,7 +5,6 @@ package com.azure.ai.vision.face.models;
 
 import com.azure.core.annotation.Generated;
 import com.azure.core.util.ExpandableStringEnum;
-import com.fasterxml.jackson.annotation.JsonCreator;
 import java.util.Collection;
 
 /**
@@ -21,6 +20,16 @@ public final class LivenessOperationMode extends ExpandableStringEnum<LivenessOp
      */
     @Generated
     public static final LivenessOperationMode PASSIVE = fromString("Passive");
+
+    /**
+     * This mode utilizes a hybrid passive or active liveness technique that necessitates user cooperation. It is
+     * optimized to require active motion only under suboptimal lighting conditions. Unlike the passive mode, this mode
+     * has no lighting restrictions, and thus offering a broader operational envelope. This mode is preferable on Web
+     * based solutions due to the lack of automatic screen brightness control available on browsers which hinders the
+     * Passive mode’s operational envelope on Web based solutions.
+     */
+    @Generated
+    public static final LivenessOperationMode PASSIVE_ACTIVE = fromString("PassiveActive");
 
     /**
      * Creates a new instance of LivenessOperationMode value.
@@ -39,7 +48,6 @@ public final class LivenessOperationMode extends ExpandableStringEnum<LivenessOp
      * @return the corresponding LivenessOperationMode.
      */
     @Generated
-    @JsonCreator
     public static LivenessOperationMode fromString(String name) {
         return fromString(name, LivenessOperationMode.class);
     }
@@ -53,14 +61,4 @@ public final class LivenessOperationMode extends ExpandableStringEnum<LivenessOp
     public static Collection<LivenessOperationMode> values() {
         return values(LivenessOperationMode.class);
     }
-
-    /**
-     * This mode utilizes a hybrid passive or active liveness technique that necessitates user cooperation. It is
-     * optimized to require active motion only under suboptimal lighting conditions. Unlike the passive mode, this mode
-     * has no lighting restrictions, and thus offering a broader operational envelope. This mode is preferable on Web
-     * based solutions due to the lack of automatic screen brightness control available on browsers which hinders the
-     * Passive mode’s operational envelope on Web based solutions.
-     */
-    @Generated
-    public static final LivenessOperationMode PASSIVE_ACTIVE = fromString("PassiveActive");
 }

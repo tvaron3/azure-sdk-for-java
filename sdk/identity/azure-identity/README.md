@@ -46,7 +46,7 @@ To take dependency on a particular version of the library that isn't present in 
 <dependency>
     <groupId>com.azure</groupId>
     <artifactId>azure-identity</artifactId>
-    <version>1.12.0</version>
+    <version>1.12.2</version>
 </dependency>
 ```
 [//]: # ({x-version-update-end})
@@ -54,6 +54,7 @@ To take dependency on a particular version of the library that isn't present in 
 ### Prerequisites
 
 - A [Java Development Kit (JDK)][jdk_link], version 8 or later.
+  - Here are details about [Java 8 client compatibility with Azure Certificate Authority](https://learn.microsoft.com/azure/security/fundamentals/azure-ca-details?tabs=root-and-subordinate-cas-list#client-compatibility-for-public-pkis).
 - An [Azure subscription][azure_sub].
 - The Azure CLI can also be useful for authenticating in a development environment, creating accounts, and managing account roles.
 
@@ -329,6 +330,12 @@ Not all credentials require this configuration. Credentials that authenticate th
     </tr>
   </thead>
   <tbody>
+    <tr>
+      <td><code><a href="https://learn.microsoft.com/java/api/com.azure.identity.azurepipelinescredential?view=azure-java-stable">AzurePipelinesCredential</a></td>
+      <td>Authenticates with a <a href="https://learn.microsoft.com/azure/devops/pipelines/library/service-endpoints?view=azure-devops&tabs=yaml">service connection in Azure Pipelines.</a></td>
+      <td></td>
+      <td></td>
+    </tr>
     <tr>
       <td><code><a href="https://learn.microsoft.com/java/api/com.azure.identity.clientassertioncredential?view=azure-java-stable">ClientAssertionCredential</a></td>
       <td>authenticates a service principal using a signed client assertion</td>

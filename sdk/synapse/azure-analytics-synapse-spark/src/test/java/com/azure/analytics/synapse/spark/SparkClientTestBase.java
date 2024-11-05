@@ -27,7 +27,6 @@ import com.azure.core.util.CoreUtils;
 import com.azure.identity.DefaultAzureCredentialBuilder;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -83,7 +82,7 @@ public abstract class SparkClientTestBase extends TestProxyTestBase {
         policies.add(new AddDatePolicy());
 
         HttpPolicyProviders.addBeforeRetryPolicies(policies);
-        policies.add(new BearerTokenAuthenticationPolicy(credential, SparkClientBuilder.DEFAULT_SCOPES));
+        policies.add(new BearerTokenAuthenticationPolicy(credential, "https://dev.azuresynapse.net/.default"));
 
         policies.add(new RetryPolicy());
 
@@ -101,7 +100,7 @@ public abstract class SparkClientTestBase extends TestProxyTestBase {
         }
 
         if (!interceptorManager.isLiveMode()) {
-            interceptorManager.removeSanitizers(Arrays.asList("AZSDK3425"));
+            interceptorManager.removeSanitizers("AZSDK3425", "AZSDK3430");
         }
 
         HttpPipeline pipeline = new HttpPipelineBuilder()

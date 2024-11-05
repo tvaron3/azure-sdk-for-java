@@ -8,6 +8,7 @@ import com.azure.ai.openai.models.AudioTranscriptionFormat;
 import com.azure.ai.openai.models.AudioTranscriptionTimestampGranularity;
 import com.azure.ai.openai.models.AudioTranslation;
 import com.azure.ai.openai.models.AudioTranslationFormat;
+import com.azure.ai.openai.models.AzureChatExtensionsMessageContext;
 import com.azure.ai.openai.models.AzureSearchChatExtensionConfiguration;
 import com.azure.ai.openai.models.AzureSearchChatExtensionParameters;
 import com.azure.ai.openai.models.ChatChoice;
@@ -25,7 +26,9 @@ import com.azure.ai.openai.models.CompletionsUsage;
 import com.azure.ai.openai.models.Embeddings;
 import com.azure.ai.openai.models.FunctionCall;
 import com.azure.ai.openai.models.FunctionCallConfig;
+import com.azure.ai.openai.models.ImageGenerations;
 import com.azure.ai.openai.models.OnYourDataApiKeyAuthenticationOptions;
+import com.azure.ai.openai.models.OnYourDataContextProperty;
 import com.azure.ai.openai.models.SpeechGenerationResponseFormat;
 import com.azure.core.exception.HttpResponseException;
 import com.azure.core.exception.ResourceNotFoundException;
@@ -39,6 +42,7 @@ import com.azure.core.util.IterableStream;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -239,6 +243,17 @@ public class OpenAISyncClientTest extends OpenAIClientTestBase {
 
     @ParameterizedTest(name = DISPLAY_NAME_WITH_ARGUMENTS)
     @MethodSource("com.azure.ai.openai.TestUtils#getTestParameters")
+    public void testGenerateImageWithResponse(HttpClient httpClient, OpenAIServiceVersion serviceVersion) {
+        client = getOpenAIClient(httpClient, serviceVersion);
+        getImageGenerationWithResponseRunner(deploymentId -> options -> requestOptions -> {
+            Response<ImageGenerations> response = client.getImageGenerationsWithResponse(deploymentId, options, requestOptions);
+            assertResponseRequestHeader(response.getRequest());
+            assertImageGenerationsForAzure(response.getValue());
+        });
+    }
+
+    @ParameterizedTest(name = DISPLAY_NAME_WITH_ARGUMENTS)
+    @MethodSource("com.azure.ai.openai.TestUtils#getTestParameters")
     public void testContentFilterInputExceptionInImageGeneration(HttpClient httpClient, OpenAIServiceVersion serviceVersion) {
         client = getOpenAIClient(httpClient, serviceVersion);
         contentFilterInputExceptionRunner((deploymentId, options) -> {
@@ -260,7 +275,6 @@ public class OpenAISyncClientTest extends OpenAIClientTestBase {
             ChatChoice chatChoice = chatCompletions.getChoices().get(0);
             MyFunctionCallArguments arguments = assertFunctionCall(
                 chatChoice,
-                "MyFunction",
                 MyFunctionCallArguments.class);
             assertTrue(arguments.getLocation().contains("San Francisco"));
             assertEquals(arguments.getUnit(), "CELSIUS");
@@ -420,6 +434,36 @@ public class OpenAISyncClientTest extends OpenAIClientTestBase {
             ChatCompletions chatCompletions = client.getChatCompletions(deploymentName, chatCompletionsOptions);
 
             assertChatCompletionsCognitiveSearch(chatCompletions);
+        });
+    }
+
+    @ParameterizedTest(name = DISPLAY_NAME_WITH_ARGUMENTS)
+    @MethodSource("com.azure.ai.openai.TestUtils#getTestParameters")
+    public void testChatCompletionSearchExtensionContextPropertyFilter(HttpClient httpClient, OpenAIServiceVersion serviceVersion) {
+        client = getOpenAIClient(httpClient, serviceVersion);
+
+        getChatCompletionsAzureChatSearchRunner((deploymentName, chatCompletionsOptions) -> {
+            AzureSearchChatExtensionParameters searchParameters = new AzureSearchChatExtensionParameters(
+                    "https://openaisdktestsearch.search.windows.net",
+                    "openai-test-index-carbon-wiki"
+            );
+
+            // Only have citations in the search results, default are 'citations' and 'intent'.
+            List<OnYourDataContextProperty> contextProperties = new ArrayList<>();
+            contextProperties.add(OnYourDataContextProperty.CITATIONS);
+
+            searchParameters.setAuthentication(new OnYourDataApiKeyAuthenticationOptions(getAzureCognitiveSearchKey()))
+                    .setIncludeContexts(contextProperties);
+            AzureSearchChatExtensionConfiguration cognitiveSearchConfiguration =
+                    new AzureSearchChatExtensionConfiguration(searchParameters);
+
+            chatCompletionsOptions.setDataSources(Arrays.asList(cognitiveSearchConfiguration));
+            ChatCompletions chatCompletions = client.getChatCompletions(deploymentName, chatCompletionsOptions);
+
+            AzureChatExtensionsMessageContext context = chatCompletions.getChoices().get(0).getMessage().getContext();
+            assertNotNull(context);
+            assertNull(context.getIntent());
+            assertFalse(CoreUtils.isNullOrEmpty(context.getCitations()));
         });
     }
 
@@ -800,7 +844,6 @@ public class OpenAISyncClientTest extends OpenAIClientTestBase {
 
             ChatCompletionsFunctionToolCall functionToolCall = (ChatCompletionsFunctionToolCall) responseMessage.getToolCalls().get(0);
             assertNotNull(functionToolCall);
-            assertEquals(functionToolCall.getFunction().getName(), "FutureTemperature"); // see base class
             assertFalse(functionToolCall.getFunction().getArguments() == null
                     || functionToolCall.getFunction().getArguments().isEmpty());
 

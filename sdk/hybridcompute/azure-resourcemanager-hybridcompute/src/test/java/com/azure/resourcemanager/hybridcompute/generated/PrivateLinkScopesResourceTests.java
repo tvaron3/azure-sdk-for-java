@@ -14,19 +14,19 @@ public final class PrivateLinkScopesResourceTests {
     @org.junit.jupiter.api.Test
     public void testDeserialize() throws Exception {
         PrivateLinkScopesResource model = BinaryData.fromString(
-            "{\"location\":\"jzraehtwdwrf\",\"tags\":{\"cdl\":\"iby\"},\"id\":\"h\",\"name\":\"hfwpracstwit\",\"type\":\"khevxccedc\"}")
+            "{\"location\":\"yhgfipnsx\",\"tags\":{\"hjglikk\":\"waekrrjreafxtsgu\",\"uzlm\":\"wslolbqp\",\"lcrpw\":\"felfktg\"},\"id\":\"xeznoi\",\"name\":\"brnjwmw\",\"type\":\"pn\"}")
             .toObject(PrivateLinkScopesResource.class);
-        Assertions.assertEquals("jzraehtwdwrf", model.location());
-        Assertions.assertEquals("iby", model.tags().get("cdl"));
+        Assertions.assertEquals("yhgfipnsx", model.location());
+        Assertions.assertEquals("waekrrjreafxtsgu", model.tags().get("hjglikk"));
     }
 
     @org.junit.jupiter.api.Test
     public void testSerialize() throws Exception {
-        PrivateLinkScopesResource model
-            = new PrivateLinkScopesResource().withLocation("jzraehtwdwrf").withTags(mapOf("cdl", "iby"));
+        PrivateLinkScopesResource model = new PrivateLinkScopesResource().withLocation("yhgfipnsx")
+            .withTags(mapOf("hjglikk", "waekrrjreafxtsgu", "uzlm", "wslolbqp", "lcrpw", "felfktg"));
         model = BinaryData.fromObject(model).toObject(PrivateLinkScopesResource.class);
-        Assertions.assertEquals("jzraehtwdwrf", model.location());
-        Assertions.assertEquals("iby", model.tags().get("cdl"));
+        Assertions.assertEquals("yhgfipnsx", model.location());
+        Assertions.assertEquals("waekrrjreafxtsgu", model.tags().get("hjglikk"));
     }
 
     // Use "Map.of" if available

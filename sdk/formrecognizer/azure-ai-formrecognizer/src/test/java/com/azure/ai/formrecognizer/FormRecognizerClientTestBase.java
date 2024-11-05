@@ -26,6 +26,7 @@ import com.azure.core.test.TestProxyTestBase;
 import com.azure.core.test.models.BodilessMatcher;
 import com.azure.core.test.utils.MockTokenCredential;
 import com.azure.core.util.Configuration;
+import com.azure.identity.AzurePowerShellCredentialBuilder;
 import com.azure.identity.DefaultAzureCredentialBuilder;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
@@ -51,9 +52,9 @@ import static com.azure.ai.formrecognizer.FormTrainingClientTestBase.FORM_RECOGN
 import static com.azure.ai.formrecognizer.FormTrainingClientTestBase.FORM_RECOGNIZER_TRAINING_BLOB_CONTAINER_SAS_URL;
 import static com.azure.ai.formrecognizer.TestUtils.FAKE_ENCODED_EMPTY_SPACE_URL;
 import static com.azure.ai.formrecognizer.TestUtils.ONE_NANO_DURATION;
+import static com.azure.ai.formrecognizer.TestUtils.REMOVE_SANITIZER_ID;
 import static com.azure.ai.formrecognizer.TestUtils.URL_TEST_FILE_FORMAT;
 import static com.azure.ai.formrecognizer.TestUtils.getAudience;
-import static com.azure.ai.formrecognizer.TestUtils.getTestProxySanitizers;
 import static com.azure.ai.formrecognizer.implementation.Utility.DEFAULT_POLL_INTERVAL;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -114,6 +115,7 @@ public abstract class FormRecognizerClientTestBase extends TestProxyTestBase {
     public static final String EXPECTED_MERCHANT_NAME = "Contoso";
 
     Duration durationTestMode;
+    private boolean sanitizersRemoved = false;
 
     /**
      * Use duration of nearly zero value for PLAYBACK test mode, otherwise, use default duration value for LIVE mode.
@@ -146,10 +148,11 @@ public abstract class FormRecognizerClientTestBase extends TestProxyTestBase {
             builder.credential(new DefaultAzureCredentialBuilder().build());
             builder.addPolicy(interceptorManager.getRecordPolicy());
         } else if (interceptorManager.isLiveMode()) {
-            builder.credential(new DefaultAzureCredentialBuilder().build());
+            builder.credential(new AzurePowerShellCredentialBuilder().build());
         }
-        if (!interceptorManager.isLiveMode()) {
-            interceptorManager.addSanitizers(getTestProxySanitizers());
+        if (!interceptorManager.isLiveMode() && !sanitizersRemoved) {
+            interceptorManager.removeSanitizers(REMOVE_SANITIZER_ID);
+            sanitizersRemoved = true;
         }
         return builder;
     }
@@ -173,10 +176,12 @@ public abstract class FormRecognizerClientTestBase extends TestProxyTestBase {
             builder.credential(new DefaultAzureCredentialBuilder().build());
             builder.addPolicy(interceptorManager.getRecordPolicy());
         } else if (interceptorManager.isLiveMode()) {
-            builder.credential(new DefaultAzureCredentialBuilder().build());
+            builder.credential(new AzurePowerShellCredentialBuilder().build());
         }
-        if (!interceptorManager.isLiveMode()) {
-            interceptorManager.addSanitizers(getTestProxySanitizers());
+
+        if (!interceptorManager.isLiveMode() && !sanitizersRemoved) {
+            interceptorManager.removeSanitizers(REMOVE_SANITIZER_ID);
+            sanitizersRemoved = true;
         }
         return builder;
     }
@@ -337,10 +342,12 @@ public abstract class FormRecognizerClientTestBase extends TestProxyTestBase {
                                                       FormRecognizerServiceVersion serviceVersion);
 
     @Test
+    @Disabled("https://github.com/Azure/azure-sdk-for-java/issues/41049")
     abstract void recognizeCustomFormUrlUnlabeledDataIncludeFieldElements(HttpClient httpClient,
                                                                           FormRecognizerServiceVersion serviceVersion);
 
     @Test
+    @Disabled("https://github.com/Azure/azure-sdk-for-java/issues/41049")
     abstract void recognizeCustomFormUrlMultiPageUnlabeled(HttpClient httpClient,
                                                            FormRecognizerServiceVersion serviceVersion);
 

@@ -15,17 +15,17 @@ public final class MachineRunCommandUpdateTests {
     public void testDeserialize() throws Exception {
         MachineRunCommandUpdate model = BinaryData
             .fromString(
-                "{\"tags\":{\"pnfqntcyp\":\"utpwoqhihejqgw\",\"rcizjxvyd\":\"xjvfoimwksl\",\"t\":\"ceacvlhvygdy\"}}")
+                "{\"tags\":{\"yhohujswtwkozzwc\":\"qxzhem\",\"wpfaj\":\"lkb\",\"talhsnvkcdmxzr\":\"jwltlwtjjgu\"}}")
             .toObject(MachineRunCommandUpdate.class);
-        Assertions.assertEquals("utpwoqhihejqgw", model.tags().get("pnfqntcyp"));
+        Assertions.assertEquals("qxzhem", model.tags().get("yhohujswtwkozzwc"));
     }
 
     @org.junit.jupiter.api.Test
     public void testSerialize() throws Exception {
         MachineRunCommandUpdate model = new MachineRunCommandUpdate()
-            .withTags(mapOf("pnfqntcyp", "utpwoqhihejqgw", "rcizjxvyd", "xjvfoimwksl", "t", "ceacvlhvygdy"));
+            .withTags(mapOf("yhohujswtwkozzwc", "qxzhem", "wpfaj", "lkb", "talhsnvkcdmxzr", "jwltlwtjjgu"));
         model = BinaryData.fromObject(model).toObject(MachineRunCommandUpdate.class);
-        Assertions.assertEquals("utpwoqhihejqgw", model.tags().get("pnfqntcyp"));
+        Assertions.assertEquals("qxzhem", model.tags().get("yhohujswtwkozzwc"));
     }
 
     // Use "Map.of" if available

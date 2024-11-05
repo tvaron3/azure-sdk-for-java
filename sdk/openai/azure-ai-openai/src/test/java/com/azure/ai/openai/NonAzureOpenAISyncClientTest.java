@@ -23,6 +23,7 @@ import com.azure.ai.openai.models.CompletionsUsage;
 import com.azure.ai.openai.models.Embeddings;
 import com.azure.ai.openai.models.FunctionCall;
 import com.azure.ai.openai.models.FunctionCallConfig;
+import com.azure.ai.openai.models.ImageGenerations;
 import com.azure.ai.openai.models.SpeechGenerationResponseFormat;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.exception.ClientAuthenticationException;
@@ -245,6 +246,17 @@ public class NonAzureOpenAISyncClientTest extends OpenAIClientTestBase {
 
     @ParameterizedTest(name = DISPLAY_NAME_WITH_ARGUMENTS)
     @MethodSource("com.azure.ai.openai.TestUtils#getTestParameters")
+    public void testGenerateImageWithResponse(HttpClient httpClient, OpenAIServiceVersion serviceVersion) {
+        client = getNonAzureOpenAISyncClient(httpClient);
+        getImageGenerationWithResponseRunner(deploymentId -> options -> requestOptions -> {
+            Response<ImageGenerations> response = client.getImageGenerationsWithResponse(deploymentId, options, requestOptions);
+            assertResponseRequestHeader(response.getRequest());
+            assertImageGenerations(response.getValue());
+        });
+    }
+
+    @ParameterizedTest(name = DISPLAY_NAME_WITH_ARGUMENTS)
+    @MethodSource("com.azure.ai.openai.TestUtils#getTestParameters")
     public void testChatFunctionAutoPreset(HttpClient httpClient, OpenAIServiceVersion serviceVersion) {
         client = getNonAzureOpenAISyncClient(httpClient);
         getChatFunctionRunnerForNonAzure((modelId, chatCompletionsOptions) -> {
@@ -255,7 +267,6 @@ public class NonAzureOpenAISyncClientTest extends OpenAIClientTestBase {
             ChatChoice chatChoice = chatCompletions.getChoices().get(0);
             MyFunctionCallArguments arguments = assertFunctionCall(
                 chatChoice,
-                "MyFunction",
                 MyFunctionCallArguments.class);
             assertTrue(arguments.getLocation().contains("San Francisco"));
             assertEquals(arguments.getUnit(), "CELSIUS");
@@ -681,7 +692,6 @@ public class NonAzureOpenAISyncClientTest extends OpenAIClientTestBase {
 
             ChatCompletionsFunctionToolCall functionToolCall = (ChatCompletionsFunctionToolCall) responseMessage.getToolCalls().get(0);
             assertNotNull(functionToolCall);
-            assertEquals(functionToolCall.getFunction().getName(), "FutureTemperature"); // see base class
             assertFalse(functionToolCall.getFunction().getArguments() == null
                     || functionToolCall.getFunction().getArguments().isEmpty());
 

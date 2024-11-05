@@ -16,34 +16,32 @@ public final class LicenseProfileArmProductProfilePropertiesTests {
     @org.junit.jupiter.api.Test
     public void testDeserialize() throws Exception {
         LicenseProfileArmProductProfileProperties model = BinaryData.fromString(
-            "{\"subscriptionStatus\":\"Enabled\",\"productType\":\"WindowsServer\",\"billingStartDate\":\"2021-09-22T23:33:27Z\",\"enrollmentDate\":\"2021-03-31T09:09:52Z\",\"disenrollmentDate\":\"2021-06-06T00:18:07Z\",\"productFeatures\":[{\"name\":\"llnwsubi\",\"subscriptionStatus\":\"Disabled\",\"billingStartDate\":\"2021-08-17T16:47:22Z\",\"enrollmentDate\":\"2021-03-05T06:09:09Z\",\"disenrollmentDate\":\"2021-07-11T00:23:53Z\"},{\"name\":\"zscxaqwo\",\"subscriptionStatus\":\"Enabled\",\"billingStartDate\":\"2021-03-17T19:02:06Z\",\"enrollmentDate\":\"2021-02-14T16:11:22Z\",\"disenrollmentDate\":\"2021-09-03T08:42:26Z\"},{\"name\":\"kvlrxnj\",\"subscriptionStatus\":\"Enabling\",\"billingStartDate\":\"2021-02-05T10:28:18Z\",\"enrollmentDate\":\"2021-10-14T01:51:13Z\",\"disenrollmentDate\":\"2021-04-09T12:47:30Z\"},{\"name\":\"lokeyy\",\"subscriptionStatus\":\"Unknown\",\"billingStartDate\":\"2021-10-04T06:36:31Z\",\"enrollmentDate\":\"2021-04-10T02:54:21Z\",\"disenrollmentDate\":\"2021-10-26T11:35:52Z\"}]}")
+            "{\"subscriptionStatus\":\"Unknown\",\"productType\":\"WindowsServer\",\"enrollmentDate\":\"2021-07-31T02:25:32Z\",\"billingStartDate\":\"2021-04-15T03:02:29Z\",\"disenrollmentDate\":\"2021-04-27T23:18:31Z\",\"billingEndDate\":\"2021-05-25T01:26:18Z\",\"productFeatures\":[{\"name\":\"flbvvnchrkcciwwz\",\"subscriptionStatus\":\"Disabling\",\"enrollmentDate\":\"2021-02-07T01:05:42Z\",\"billingStartDate\":\"2021-05-03T11:30:29Z\",\"disenrollmentDate\":\"2021-05-22T18:36:22Z\",\"billingEndDate\":\"2021-10-14T07:23:56Z\"},{\"name\":\"ofoskghs\",\"subscriptionStatus\":\"Enabled\",\"enrollmentDate\":\"2021-09-27T06:41:32Z\",\"billingStartDate\":\"2021-10-21T01:55:36Z\",\"disenrollmentDate\":\"2021-06-29T03:13:35Z\",\"billingEndDate\":\"2021-01-02T07:29:36Z\"},{\"name\":\"gidyjrrf\",\"subscriptionStatus\":\"Enabled\",\"enrollmentDate\":\"2021-05-02T14:53:40Z\",\"billingStartDate\":\"2021-06-03T02:24:21Z\",\"disenrollmentDate\":\"2021-04-28T17:45:05Z\",\"billingEndDate\":\"2021-04-17T17:42:02Z\"}]}")
             .toObject(LicenseProfileArmProductProfileProperties.class);
-        Assertions.assertEquals(LicenseProfileSubscriptionStatus.ENABLED, model.subscriptionStatus());
+        Assertions.assertEquals(LicenseProfileSubscriptionStatus.UNKNOWN, model.subscriptionStatus());
         Assertions.assertEquals(LicenseProfileProductType.WINDOWS_SERVER, model.productType());
-        Assertions.assertEquals("llnwsubi", model.productFeatures().get(0).name());
-        Assertions.assertEquals(LicenseProfileSubscriptionStatus.DISABLED,
+        Assertions.assertEquals("flbvvnchrkcciwwz", model.productFeatures().get(0).name());
+        Assertions.assertEquals(LicenseProfileSubscriptionStatus.DISABLING,
             model.productFeatures().get(0).subscriptionStatus());
     }
 
     @org.junit.jupiter.api.Test
     public void testSerialize() throws Exception {
         LicenseProfileArmProductProfileProperties model = new LicenseProfileArmProductProfileProperties()
-            .withSubscriptionStatus(LicenseProfileSubscriptionStatus.ENABLED)
+            .withSubscriptionStatus(LicenseProfileSubscriptionStatus.UNKNOWN)
             .withProductType(LicenseProfileProductType.WINDOWS_SERVER)
             .withProductFeatures(Arrays.asList(
-                new ProductFeature().withName("llnwsubi")
-                    .withSubscriptionStatus(LicenseProfileSubscriptionStatus.DISABLED),
-                new ProductFeature().withName("zscxaqwo")
+                new ProductFeature().withName("flbvvnchrkcciwwz")
+                    .withSubscriptionStatus(LicenseProfileSubscriptionStatus.DISABLING),
+                new ProductFeature().withName("ofoskghs")
                     .withSubscriptionStatus(LicenseProfileSubscriptionStatus.ENABLED),
-                new ProductFeature().withName("kvlrxnj")
-                    .withSubscriptionStatus(LicenseProfileSubscriptionStatus.ENABLING),
-                new ProductFeature().withName("lokeyy")
-                    .withSubscriptionStatus(LicenseProfileSubscriptionStatus.UNKNOWN)));
+                new ProductFeature().withName("gidyjrrf")
+                    .withSubscriptionStatus(LicenseProfileSubscriptionStatus.ENABLED)));
         model = BinaryData.fromObject(model).toObject(LicenseProfileArmProductProfileProperties.class);
-        Assertions.assertEquals(LicenseProfileSubscriptionStatus.ENABLED, model.subscriptionStatus());
+        Assertions.assertEquals(LicenseProfileSubscriptionStatus.UNKNOWN, model.subscriptionStatus());
         Assertions.assertEquals(LicenseProfileProductType.WINDOWS_SERVER, model.productType());
-        Assertions.assertEquals("llnwsubi", model.productFeatures().get(0).name());
-        Assertions.assertEquals(LicenseProfileSubscriptionStatus.DISABLED,
+        Assertions.assertEquals("flbvvnchrkcciwwz", model.productFeatures().get(0).name());
+        Assertions.assertEquals(LicenseProfileSubscriptionStatus.DISABLING,
             model.productFeatures().get(0).subscriptionStatus());
     }
 }

@@ -13,19 +13,22 @@ import org.junit.jupiter.api.Assertions;
 public final class PatchSettingsTests {
     @org.junit.jupiter.api.Test
     public void testDeserialize() throws Exception {
-        PatchSettings model
-            = BinaryData.fromString("{\"assessmentMode\":\"ImageDefault\",\"patchMode\":\"ImageDefault\"}")
-                .toObject(PatchSettings.class);
+        PatchSettings model = BinaryData.fromString(
+            "{\"assessmentMode\":\"ImageDefault\",\"patchMode\":\"AutomaticByOS\",\"enableHotpatching\":true,\"status\":{\"hotpatchEnablementStatus\":\"Enabled\"}}")
+            .toObject(PatchSettings.class);
         Assertions.assertEquals(AssessmentModeTypes.IMAGE_DEFAULT, model.assessmentMode());
-        Assertions.assertEquals(PatchModeTypes.IMAGE_DEFAULT, model.patchMode());
+        Assertions.assertEquals(PatchModeTypes.AUTOMATIC_BY_OS, model.patchMode());
+        Assertions.assertEquals(true, model.enableHotpatching());
     }
 
     @org.junit.jupiter.api.Test
     public void testSerialize() throws Exception {
         PatchSettings model = new PatchSettings().withAssessmentMode(AssessmentModeTypes.IMAGE_DEFAULT)
-            .withPatchMode(PatchModeTypes.IMAGE_DEFAULT);
+            .withPatchMode(PatchModeTypes.AUTOMATIC_BY_OS)
+            .withEnableHotpatching(true);
         model = BinaryData.fromObject(model).toObject(PatchSettings.class);
         Assertions.assertEquals(AssessmentModeTypes.IMAGE_DEFAULT, model.assessmentMode());
-        Assertions.assertEquals(PatchModeTypes.IMAGE_DEFAULT, model.patchMode());
+        Assertions.assertEquals(PatchModeTypes.AUTOMATIC_BY_OS, model.patchMode());
+        Assertions.assertEquals(true, model.enableHotpatching());
     }
 }
