@@ -12,23 +12,22 @@ import org.junit.jupiter.api.Assertions;
 public final class BackupRestoreFilesTests {
     @org.junit.jupiter.api.Test
     public void testDeserialize() throws Exception {
-        BackupRestoreFiles model = BinaryData
-            .fromString(
-                "{\"fileList\":[\"zfvazi\"],\"restoreFilePath\":\"l\",\"destinationVolumeId\":\"rqttbajlkatnw\"}")
+        BackupRestoreFiles model = BinaryData.fromString(
+            "{\"fileList\":[\"btgn\",\"nzeyqxtjj\"],\"restoreFilePath\":\"qlqhycavodg\",\"destinationVolumeId\":\"xdbeesmieknl\"}")
             .toObject(BackupRestoreFiles.class);
-        Assertions.assertEquals("zfvazi", model.fileList().get(0));
-        Assertions.assertEquals("l", model.restoreFilePath());
-        Assertions.assertEquals("rqttbajlkatnw", model.destinationVolumeId());
+        Assertions.assertEquals("btgn", model.fileList().get(0));
+        Assertions.assertEquals("qlqhycavodg", model.restoreFilePath());
+        Assertions.assertEquals("xdbeesmieknl", model.destinationVolumeId());
     }
 
     @org.junit.jupiter.api.Test
     public void testSerialize() throws Exception {
-        BackupRestoreFiles model = new BackupRestoreFiles().withFileList(Arrays.asList("zfvazi"))
-            .withRestoreFilePath("l")
-            .withDestinationVolumeId("rqttbajlkatnw");
+        BackupRestoreFiles model = new BackupRestoreFiles().withFileList(Arrays.asList("btgn", "nzeyqxtjj"))
+            .withRestoreFilePath("qlqhycavodg")
+            .withDestinationVolumeId("xdbeesmieknl");
         model = BinaryData.fromObject(model).toObject(BackupRestoreFiles.class);
-        Assertions.assertEquals("zfvazi", model.fileList().get(0));
-        Assertions.assertEquals("l", model.restoreFilePath());
-        Assertions.assertEquals("rqttbajlkatnw", model.destinationVolumeId());
+        Assertions.assertEquals("btgn", model.fileList().get(0));
+        Assertions.assertEquals("qlqhycavodg", model.restoreFilePath());
+        Assertions.assertEquals("xdbeesmieknl", model.destinationVolumeId());
     }
 }

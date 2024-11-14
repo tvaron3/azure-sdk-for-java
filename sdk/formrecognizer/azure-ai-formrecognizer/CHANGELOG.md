@@ -10,6 +10,37 @@
 
 ### Other Changes
 
+## 4.1.12 (2024-11-08)
+
+### Bugs Fixed
+- Fixed an OOM error occurring due to creating a list of PageWords every line in the page instead of just once for each page.
+
+### Other Changes
+
+#### Dependency Updates
+
+- Upgraded `azure-core` from `1.51.1` to version `1.54.0`.
+- Upgraded `azure-core-http-netty` from `1.15.3` to version `1.15.6`.
+
+## 4.1.11 (2024-09-19)
+
+### Other Changes
+
+#### Dependency Updates
+
+- Upgraded `azure-core` from `1.51.1` to version `1.52.0`.
+- Upgraded `azure-core-http-netty` from `1.15.3` to version `1.15.4`.
+
+## 4.1.10 (2024-08-25)
+
+### Other Changes
+
+- Removed remaining `jackson-databind` usages and dependency from the project.
+
+#### Dependency Updates
+
+- Upgraded `azure-core` from `1.49.1` to version `1.50.0`.
+- Upgraded `azure-core-http-netty` from `1.15.1` to version `1.15.2`.
 
 ## 4.1.9 (2024-06-27)
 

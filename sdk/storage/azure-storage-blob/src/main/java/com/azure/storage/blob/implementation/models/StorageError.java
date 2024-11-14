@@ -5,43 +5,33 @@
 package com.azure.storage.blob.implementation.models;
 
 import com.azure.core.annotation.Fluent;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
+import com.azure.core.util.CoreUtils;
+import com.azure.xml.XmlReader;
+import com.azure.xml.XmlSerializable;
+import com.azure.xml.XmlToken;
+import com.azure.xml.XmlWriter;
+import javax.xml.namespace.QName;
+import javax.xml.stream.XMLStreamException;
 
-/** The StorageError model. */
-@JacksonXmlRootElement(localName = "StorageError")
+/**
+ * The StorageError model.
+ */
 @Fluent
-public final class StorageError {
+public final class StorageError implements XmlSerializable<StorageError> {
     /*
      * The Message property.
      */
-    @JsonProperty(value = "Message")
     private String message;
 
-    /*
-     * The CopySourceStatusCode property.
+    /**
+     * Creates an instance of StorageError class.
      */
-    @JsonProperty(value = "CopySourceStatusCode")
-    private Long copySourceStatusCode;
-
-    /*
-     * The CopySourceErrorCode property.
-     */
-    @JsonProperty(value = "CopySourceErrorCode")
-    private String copySourceErrorCode;
-
-    /*
-     * The CopySourceErrorMessage property.
-     */
-    @JsonProperty(value = "CopySourceErrorMessage")
-    private String copySourceErrorMessage;
-
-    /** Creates an instance of StorageError class. */
-    public StorageError() {}
+    public StorageError() {
+    }
 
     /**
      * Get the message property: The Message property.
-     *
+     * 
      * @return the message value.
      */
     public String getMessage() {
@@ -50,7 +40,7 @@ public final class StorageError {
 
     /**
      * Set the message property: The Message property.
-     *
+     * 
      * @param message the message value to set.
      * @return the StorageError object itself.
      */
@@ -59,63 +49,56 @@ public final class StorageError {
         return this;
     }
 
-    /**
-     * Get the copySourceStatusCode property: The CopySourceStatusCode property.
-     *
-     * @return the copySourceStatusCode value.
-     */
-    public Long getCopySourceStatusCode() {
-        return this.copySourceStatusCode;
+    @Override
+    public XmlWriter toXml(XmlWriter xmlWriter) throws XMLStreamException {
+        return toXml(xmlWriter, null);
+    }
+
+    @Override
+    public XmlWriter toXml(XmlWriter xmlWriter, String rootElementName) throws XMLStreamException {
+        rootElementName = CoreUtils.isNullOrEmpty(rootElementName) ? "StorageError" : rootElementName;
+        xmlWriter.writeStartElement(rootElementName);
+        xmlWriter.writeStringElement("Message", this.message);
+        return xmlWriter.writeEndElement();
     }
 
     /**
-     * Set the copySourceStatusCode property: The CopySourceStatusCode property.
-     *
-     * @param copySourceStatusCode the copySourceStatusCode value to set.
-     * @return the StorageError object itself.
+     * Reads an instance of StorageError from the XmlReader.
+     * 
+     * @param xmlReader The XmlReader being read.
+     * @return An instance of StorageError if the XmlReader was pointing to an instance of it, or null if it was
+     * pointing to XML null.
+     * @throws XMLStreamException If an error occurs while reading the StorageError.
      */
-    public StorageError setCopySourceStatusCode(Long copySourceStatusCode) {
-        this.copySourceStatusCode = copySourceStatusCode;
-        return this;
+    public static StorageError fromXml(XmlReader xmlReader) throws XMLStreamException {
+        return fromXml(xmlReader, null);
     }
 
     /**
-     * Get the copySourceErrorCode property: The CopySourceErrorCode property.
-     *
-     * @return the copySourceErrorCode value.
+     * Reads an instance of StorageError from the XmlReader.
+     * 
+     * @param xmlReader The XmlReader being read.
+     * @param rootElementName Optional root element name to override the default defined by the model. Used to support
+     * cases where the model can deserialize from different root element names.
+     * @return An instance of StorageError if the XmlReader was pointing to an instance of it, or null if it was
+     * pointing to XML null.
+     * @throws XMLStreamException If an error occurs while reading the StorageError.
      */
-    public String getCopySourceErrorCode() {
-        return this.copySourceErrorCode;
-    }
+    public static StorageError fromXml(XmlReader xmlReader, String rootElementName) throws XMLStreamException {
+        String finalRootElementName = CoreUtils.isNullOrEmpty(rootElementName) ? "StorageError" : rootElementName;
+        return xmlReader.readObject(finalRootElementName, reader -> {
+            StorageError deserializedStorageError = new StorageError();
+            while (reader.nextElement() != XmlToken.END_ELEMENT) {
+                QName elementName = reader.getElementName();
 
-    /**
-     * Set the copySourceErrorCode property: The CopySourceErrorCode property.
-     *
-     * @param copySourceErrorCode the copySourceErrorCode value to set.
-     * @return the StorageError object itself.
-     */
-    public StorageError setCopySourceErrorCode(String copySourceErrorCode) {
-        this.copySourceErrorCode = copySourceErrorCode;
-        return this;
-    }
+                if ("Message".equals(elementName.getLocalPart())) {
+                    deserializedStorageError.message = reader.getStringElement();
+                } else {
+                    reader.skipElement();
+                }
+            }
 
-    /**
-     * Get the copySourceErrorMessage property: The CopySourceErrorMessage property.
-     *
-     * @return the copySourceErrorMessage value.
-     */
-    public String getCopySourceErrorMessage() {
-        return this.copySourceErrorMessage;
-    }
-
-    /**
-     * Set the copySourceErrorMessage property: The CopySourceErrorMessage property.
-     *
-     * @param copySourceErrorMessage the copySourceErrorMessage value to set.
-     * @return the StorageError object itself.
-     */
-    public StorageError setCopySourceErrorMessage(String copySourceErrorMessage) {
-        this.copySourceErrorMessage = copySourceErrorMessage;
-        return this;
+            return deserializedStorageError;
+        });
     }
 }

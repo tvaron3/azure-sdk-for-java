@@ -2,7 +2,15 @@
 // Licensed under the MIT License.
 package com.azure.compute.batch;
 
-import com.azure.compute.batch.models.*;
+import com.azure.compute.batch.models.BatchJobCreateContent;
+import com.azure.compute.batch.models.BatchNodeFile;
+import com.azure.compute.batch.models.BatchPool;
+import com.azure.compute.batch.models.BatchPoolInfo;
+import com.azure.compute.batch.models.BatchTask;
+import com.azure.compute.batch.models.BatchTaskCreateContent;
+import com.azure.compute.batch.models.FileProperties;
+import com.azure.compute.batch.models.FileResponseHeaderProperties;
+import com.azure.compute.batch.models.ListBatchNodeFilesOptions;
 import com.azure.core.http.HttpHeaderName;
 import com.azure.core.http.rest.PagedIterable;
 import com.azure.core.http.rest.Response;
@@ -10,7 +18,6 @@ import com.azure.core.test.TestMode;
 import com.azure.core.util.BinaryData;
 import com.azure.json.JsonProviders;
 import com.azure.json.JsonReader;
-import org.junit.Assert;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -71,11 +78,16 @@ public class FileTests extends BatchClientTestBase {
                 String fileContent = new String(binaryData.toBytes(), StandardCharsets.UTF_8);
                 Assertions.assertEquals("hello\n", fileContent);
 
-                binaryData = batchClientBuilder.buildAsyncClient().getTaskFileWithResponse(jobId, taskId, "stdout.txt", null).block().getValue();
+                binaryData = batchClientBuilder.buildAsyncClient()
+                    .getTaskFileWithResponse(jobId, taskId, "stdout.txt", null)
+                    .block()
+                    .getValue();
                 Assertions.assertEquals("hello\n", binaryData.toString());
 
-                Response<Void> getFilePropertiesResponse = batchClient.getTaskFilePropertiesWithResponse(jobId, taskId, "stdout.txt", null);
-                Assertions.assertEquals("6", getFilePropertiesResponse.getHeaders().getValue(HttpHeaderName.CONTENT_LENGTH));
+                Response<Void> getFilePropertiesResponse
+                    = batchClient.getTaskFilePropertiesWithResponse(jobId, taskId, "stdout.txt", null);
+                Assertions.assertEquals("6",
+                    getFilePropertiesResponse.getHeaders().getValue(HttpHeaderName.CONTENT_LENGTH));
 
             } else {
                 throw new TimeoutException("Task did not complete within the specified timeout");
@@ -119,16 +131,20 @@ public class FileTests extends BatchClientTestBase {
                         break;
                     }
                 }
-                Assert.assertNotNull(fileName);
+                Assertions.assertNotNull(fileName);
 
                 BinaryData binaryData = batchClient.getNodeFileWithResponse(poolId, nodeId, fileName, null).getValue();
                 String fileContent = new String(binaryData.toBytes(), StandardCharsets.UTF_8);
-                Assert.assertEquals("hello\n", fileContent);
+                Assertions.assertEquals("hello\n", fileContent);
 
-                binaryData = batchClientBuilder.buildAsyncClient().getNodeFileWithResponse(poolId, nodeId, fileName, null).block().getValue();
+                binaryData = batchClientBuilder.buildAsyncClient()
+                    .getNodeFileWithResponse(poolId, nodeId, fileName, null)
+                    .block()
+                    .getValue();
                 Assertions.assertEquals("hello\n", binaryData.toString());
 
-                FileResponseHeaderProperties fileProperties = batchClient.getNodeFileProperties(poolId, nodeId, fileName);
+                FileResponseHeaderProperties fileProperties
+                    = batchClient.getNodeFileProperties(poolId, nodeId, fileName);
                 Assertions.assertEquals(6, fileProperties.getContentLength());
 
             } else {
@@ -144,14 +160,10 @@ public class FileTests extends BatchClientTestBase {
     }
 
     @Test
-    public void testDeserializationOfFileProperties() throws IOException {
-        String jsonResponse = "{"
-            + "\"lastModified\":\"2022-01-01T00:00:00Z\","
-            + "\"contentLength\":\"1024\","
-            + "\"creationTime\":\"2022-01-01T01:00:00Z\","
-            + "\"contentType\":\"application/json\","
-            + "\"fileMode\":\"rw-r--r--\""
-            + "}";
+    public void testDeserializationOfFileProperties() {
+        String jsonResponse = "{" + "\"lastModified\":\"2022-01-01T00:00:00Z\"," + "\"contentLength\":\"1024\","
+            + "\"creationTime\":\"2022-01-01T01:00:00Z\"," + "\"contentType\":\"application/json\","
+            + "\"fileMode\":\"rw-r--r--\"" + "}";
 
         try (JsonReader jsonReader = JsonProviders.createReader(new StringReader(jsonResponse))) {
             FileProperties fileProperties = FileProperties.fromJson(jsonReader);

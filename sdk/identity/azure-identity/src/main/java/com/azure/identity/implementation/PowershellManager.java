@@ -11,6 +11,7 @@ import reactor.core.publisher.Mono;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 
 public class PowershellManager {
@@ -22,7 +23,8 @@ public class PowershellManager {
 
     public PowershellManager(boolean useLegacyPowerShell) {
         if (Platform.isWindows()) {
-            this.powershellPath = useLegacyPowerShell ? LEGACY_WINDOWS_POWERSHELL_PATH : DEFAULT_WINDOWS_POWERSHELL_PATH;
+            this.powershellPath
+                = useLegacyPowerShell ? LEGACY_WINDOWS_POWERSHELL_PATH : DEFAULT_WINDOWS_POWERSHELL_PATH;
         } else {
             this.powershellPath = DEFAULT_NIX_POWERSHELL_PATH;
         }
@@ -53,8 +55,13 @@ public class PowershellManager {
     }
 
     String[] getCommandLine(String input) {
+        String base64Input = java.util.Base64.getEncoder().encodeToString(input.getBytes(StandardCharsets.UTF_16LE));
+
         return Platform.isWindows()
-            ? new String[]{powershellPath, "-Command", "-NoProfile", input}
-            : new String[]{"/bin/bash", "-c", String.format("%s -NoProfile -Command '%s'", powershellPath, input)};
+            ? new String[] { powershellPath, "-NoProfile", "-EncodedCommand", base64Input }
+            : new String[] {
+                "/bin/bash",
+                "-c",
+                String.format("%s -NoProfile -EncodedCommand '%s'", powershellPath, base64Input) };
     }
 }
