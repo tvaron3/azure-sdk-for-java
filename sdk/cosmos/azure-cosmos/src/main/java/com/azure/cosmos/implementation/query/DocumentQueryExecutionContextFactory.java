@@ -77,7 +77,7 @@ public class DocumentQueryExecutionContextFactory {
         return collectionCache.resolveCollectionAsync(null, request);
     }
 
-    private static <T> Mono<QueryInfoAndRanges> getPartitionKeyRangesAndQueryInfo(
+    private static <T> Mono<PartitionKeyRangesAndQueryInfos> getPartitionKeyRangesAndQueryInfo(
         DiagnosticsClientContext diagnosticsClientContext,
         IDocumentQueryClient client,
         SqlQuerySpec query,
@@ -106,7 +106,7 @@ public class DocumentQueryExecutionContextFactory {
                 map(tuple -> {
                     List<Range<String>> targetRanges =
                         tuple.getT1().stream().map(PartitionKeyRange::toRange).collect(Collectors.toList());
-                    return new QueryInfoAndRanges(QueryInfo.EMPTY, HybridSearchQueryInfo.EMPTY, targetRanges, tuple.getT2());
+                    return new PartitionKeyRangesAndQueryInfos(QueryInfo.EMPTY, null, targetRanges, tuple.getT2());
                 });
         }
 
@@ -162,7 +162,7 @@ public class DocumentQueryExecutionContextFactory {
             });
     }
 
-    private static <T> Mono<QueryInfoAndRanges> getTargetRangesFromQueryPlan(
+    private static <T> Mono<PartitionKeyRangesAndQueryInfos> getTargetRangesFromQueryPlan(
         CosmosQueryRequestOptions cosmosQueryRequestOptions, DocumentCollection collection,
         DefaultDocumentQueryExecutionContext<T> queryExecutionContext,
         PartitionedQueryExecutionInfo partitionedQueryExecutionInfo, Instant planFetchStartTime,
@@ -200,9 +200,9 @@ public class DocumentQueryExecutionContextFactory {
             return Mono.zip(targetRange, allRanges)
                 .map(tuple -> {
                     if (partitionedQueryExecutionInfo.hasHybridSearchQueryInfo()) {
-                        return new QueryInfoAndRanges(QueryInfo.EMPTY, partitionedQueryExecutionInfo.getHybridSearchQueryInfo(), Collections.singletonList(tuple.getT1()), tuple.getT2());
+                        return new PartitionKeyRangesAndQueryInfos(null, partitionedQueryExecutionInfo.getHybridSearchQueryInfo(), Collections.singletonList(tuple.getT1()), tuple.getT2());
                     } else {
-                        return new QueryInfoAndRanges(queryInfo, HybridSearchQueryInfo.EMPTY, Collections.singletonList(tuple.getT1()), tuple.getT2());
+                        return new PartitionKeyRangesAndQueryInfos(queryInfo, null, Collections.singletonList(tuple.getT1()), tuple.getT2());
                     }
                 });
         }
@@ -217,14 +217,14 @@ public class DocumentQueryExecutionContextFactory {
         return Mono.zip(targetRanges, allRanges)
             .map(tuple -> {
                 if (partitionedQueryExecutionInfo.hasHybridSearchQueryInfo()) {
-                    return new QueryInfoAndRanges(null, partitionedQueryExecutionInfo.getHybridSearchQueryInfo(), tuple.getT1(), tuple.getT2());
+                    return new PartitionKeyRangesAndQueryInfos(null, partitionedQueryExecutionInfo.getHybridSearchQueryInfo(), tuple.getT1(), tuple.getT2());
                 } else {
-                    return new QueryInfoAndRanges(partitionedQueryExecutionInfo.getQueryInfo(), null, tuple.getT1(), tuple.getT2());
+                    return new PartitionKeyRangesAndQueryInfos(partitionedQueryExecutionInfo.getQueryInfo(), null, tuple.getT1(), tuple.getT2());
                 }
             });
     }
 
-    private static <T> Mono<QueryInfoAndRanges> getTargetRangesFromEmptyQueryPlan(
+    private static <T> Mono<PartitionKeyRangesAndQueryInfos> getTargetRangesFromEmptyQueryPlan(
         CosmosQueryRequestOptions cosmosQueryRequestOptions,
         DocumentCollection collection,
         DefaultDocumentQueryExecutionContext<T> queryExecutionContext,
@@ -255,7 +255,7 @@ public class DocumentQueryExecutionContextFactory {
             ).map(pkRanges -> pkRanges.stream().map(PartitionKeyRange::toRange).collect(Collectors.toList()));
 
         return Mono.zip(targetRange, allRanges)
-            .map(tuple -> new QueryInfoAndRanges(queryInfo, HybridSearchQueryInfo.EMPTY, Collections.singletonList(tuple.getT1()), tuple.getT2()));
+            .map(tuple -> new PartitionKeyRangesAndQueryInfos(queryInfo, null, Collections.singletonList(tuple.getT1()), tuple.getT2()));
     }
 
     synchronized private static void tryCacheQueryPlan(
@@ -360,7 +360,7 @@ public class DocumentQueryExecutionContextFactory {
             queryRequestOptionsAccessor.setPartitionKeyDefinition(cosmosQueryRequestOptions, collectionValueHolder.v.getPartitionKey());
             queryRequestOptionsAccessor.setCollectionRid(cosmosQueryRequestOptions, collectionValueHolder.v.getResourceId());
 
-            Mono<QueryInfoAndRanges> queryPlanTask =
+            Mono<PartitionKeyRangesAndQueryInfos> queryPlanTask =
                 getPartitionKeyRangesAndQueryInfo(diagnosticsClientContext,
                                                   client,
                                                   query,
@@ -422,24 +422,30 @@ public class DocumentQueryExecutionContextFactory {
         boolean getLazyFeedResponse = Boolean.FALSE;
 
         if (hybridSearchQueryInfo!=null) {
-            // Validate the TOP for non-streaming order-by queries
-            if (!hybridSearchQueryInfo.hasTake() && hybridSearchQueryInfo.getTake() < 0) {
+            // Validate the TOP for hybrid search queries
+            if (!hybridSearchQueryInfo.hasTake()) {
                 throw new HybridSearchBadRequestException(HttpConstants.StatusCodes.BADREQUEST,
-                    "Executing a hybrid or full text query without Top can consume a large number of RUs" +
-                        "very fast and have long runtimes. Please ensure you are using the above filter" +
+                    "Executing a hybrid or full text query without Top or Limit can consume a large number of RUs " +
+                        "very fast and have long runtimes. Please ensure you are using the above filter " +
                         "with your hybrid or full text search query.");
             }
 
-            // Validate the size of Take against MaxItemSizeForHybridSearch
+            if (hybridSearchQueryInfo.hasSkip() && hybridSearchQueryInfo.getSkip() >= hybridSearchQueryInfo.getTake()) {
+                throw new HybridSearchBadRequestException(HttpConstants.StatusCodes.BADREQUEST,
+                    "Executing a hybrid or full-text query with an offset(Skip) greater than or equal to limit(Take). " +
+                        "Please ensure limit is greater than offset.");
+            }
+
+            int pageSize = hybridSearchQueryInfo.hasSkip() ? hybridSearchQueryInfo.getTake() + hybridSearchQueryInfo.getSkip() : hybridSearchQueryInfo.getTake();
             int maxitemSizeForFullTextSearch = Math.max(Configs.getMaxItemCountForHybridSearchSearch(),
                 qryOptAccessor.getMaxItemCountForHybridSearch(cosmosQueryRequestOptions));
-            if (hybridSearchQueryInfo.getTake() > maxitemSizeForFullTextSearch) {
+
+            if (pageSize > maxitemSizeForFullTextSearch) {
                 throw new HybridSearchBadRequestException(HttpConstants.StatusCodes.BADREQUEST,
                     "Executing a hybrid or full text search query with TOP larger than the maxItemSizeForHybridSearch " +
                         "is not allowed");
             }
-
-            initialPageSize = hybridSearchQueryInfo.getTake();
+            initialPageSize = pageSize;
         } else {
 
             getLazyFeedResponse = queryInfo.hasTop();

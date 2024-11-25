@@ -14,11 +14,14 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class FullTextSearchPerf{
 
-    private static boolean diagnostics = false;
-    private static int queryIndex = 1; // 0 for full text search, 1 for full text rank, and 2 for hybrid search
-    private static int warmUpTime = 60000; // 120000
-    private static int testTime = 60000; // 600000
-    private static int top = 1000;
+    private static final boolean diagnostics = false;
+    private static final int queryIndex = 1; // 0 for full text search, 1 for full text rank, and 2 for hybrid search
+    private static final int warmUpTime = 60000; // 120000
+    private static final int testTime = 60000; // 600000
+    private static final int top = 1000;
+    private static final boolean useTop = true;
+    private static final boolean ruCharge = true;
+    private static final boolean memory = false;
 
     public static void main(String[] args) throws InterruptedException {
 
@@ -27,14 +30,15 @@ public class FullTextSearchPerf{
                 .key("")
                 .gatewayMode()
                 .buildAsyncClient();
-        CosmosAsyncDatabase cosmosAsyncDatabase = cosmosAsyncClient.getDatabase("QueryHybridRankTesting");
+        CosmosAsyncDatabase cosmosAsyncDatabase = cosmosAsyncClient.getDatabase("perf-tests-sdks");
         CosmosAsyncContainer cosmosAsyncContainer = cosmosAsyncDatabase
-                .getContainer("arxiv-250kdocuments-index");
+                .getContainer("fts");
+        String topStr = useTop ? "TOP " + top : "";
         String embedding  = createEmbedding().toString();
-        String ftsQuery = "SELECT c.text AS Text FROM c WHERE FullTextContains(c.text, 'shoulder')";
-        String ftsRankQuery = "SELECT TOP 1000 c.text AS Text FROM c Order By Rank FullTextScore(c.text, ['may', 'music'])";
-        String hybridQuery = "SELECT TOP 1000 c.text AS Text FROM c Order By Rank RRF(FullTextScore(c.text, ['may', 'music']), VectorDistance(c.vector," + embedding + "))";
-        String vectorSearchQuery = "SELECT TOP 1000 c.text AS Text FROM c Order By VectorDistance(c.vector," + embedding + ")";
+        String ftsQuery = "SELECT " + topStr + " c.text AS Text FROM c WHERE FullTextContains(c.text, 'shoulder')";
+        String ftsRankQuery = "SELECT " + topStr + " c.text AS Text FROM c Order By Rank FullTextScore(c.text, ['may', 'music'])";
+        String hybridQuery = "SELECT " + topStr + " c.text AS Text FROM c Order By Rank RRF(FullTextScore(c.text, ['may', 'music']), VectorDistance(c.vector," + embedding + "))";
+        String vectorSearchQuery = "SELECT TOP 10000 c.text AS Text FROM c Order By VectorDistance(c.vector," + embedding + ")";
         String query;
         switch (queryIndex) {
             case 0:
@@ -70,27 +74,55 @@ public class FullTextSearchPerf{
         LinkedList<Long> times = new LinkedList<>();
         long start2 = new Date().getTime();
         AtomicReference<String> diagnosticsStr = new AtomicReference<>("");
+        AtomicReference<Double> totalRUCharge = new AtomicReference<>(0.0);
         while(new Date().getTime() - start2 < testTime) {
             long start = new Date().getTime();
-            cosmosAsyncContainer.queryItems(query , Doc.class).byPage()
-                    .flatMap(passengerFeedResponse -> {
+            if (memory) {
+                Runtime runtime = Runtime.getRuntime();
+                long memoryBefore = runtime.totalMemory() - runtime.freeMemory();
+                for (int z = 0; z < 100; z++) {
+
+
+                    // Calculate the used memory
+
+                    cosmosAsyncContainer.queryItems(query, Doc.class).byPage()
+                            .flatMap(feedResponse -> Flux.empty()).blockLast();
+
+                }
+                long memoryAfter = runtime.totalMemory() - runtime.freeMemory();
+                System.out.println("Used memory in bytes before queries: " + memoryBefore);
+                System.out.println("Used memory in bytes after queries: " + memoryAfter);
+                runtime.gc();
+                long memoryAfterGC = runtime.totalMemory() - runtime.freeMemory();
+                System.out.println("Used memory in bytes after GC: " + memoryAfterGC);
+            } else {
+                cosmosAsyncContainer.queryItems(query , Doc.class).byPage()
+                        .flatMap(feedResponse -> {
 //                        for (Passenger passenger : passengerFeedResponse.getResults()) {
 //                           System.out.println(passenger);
 //                        }
-                        if (diagnostics) {
-                            diagnosticsStr.set(diagnosticsStr.get() + passengerFeedResponse.getCosmosDiagnostics().toString() + "\n ---------- \n");
-                        }
-                        //System.out.println(passengerFeedResponse.getActivityId());
-                        //System.out.println(passengerFeedResponse.getCorrelationActivityId());
-                        return Flux.empty();
-                    })
-                    .blockLast();
-            long diff = new Date().getTime() - start;
-            times.add(diff);
-            i++;
+                            if (diagnostics) {
+                                diagnosticsStr.set(diagnosticsStr.get() + feedResponse.getCosmosDiagnostics().toString() + "\n ---------- \n");
+                            }
+                            if (ruCharge) {
+                                totalRUCharge.set(feedResponse.getRequestCharge() + totalRUCharge.get());
+                            }
+                            //System.out.println(passengerFeedResponse.getActivityId());
+                            //System.out.println(passengerFeedResponse.getCorrelationActivityId());
+                            return Flux.empty();
+                        })
+                        .blockLast();
+                long diff = new Date().getTime() - start;
+                times.add(diff);
+                i++;
+            }
+
         }
         if (diagnostics) {
             writeDiagnostics(diagnosticsStr.get());
+        }
+        if (ruCharge) {
+            System.out.println("Avg RU charge: " + totalRUCharge.get() / times.size());
         }
 
 

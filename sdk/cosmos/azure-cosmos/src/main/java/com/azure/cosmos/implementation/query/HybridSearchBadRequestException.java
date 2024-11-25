@@ -4,12 +4,12 @@ package com.azure.cosmos.implementation.query;
 
 import com.azure.cosmos.CosmosException;
 
-public class HybridSearchBadRequestException extends CosmosException {
+public final class HybridSearchBadRequestException extends CosmosException {
 
     private static final long serialVersionUID = 1L;
 
     /**
-     * Creates a new instance of the NonStreamingOrderByBadRequestException class.
+     * Creates a new instance of the HybridSearchBadRequestException class.
      *
      * @param statusCode the http status code of the response.
      * @param errorMessage the error message.

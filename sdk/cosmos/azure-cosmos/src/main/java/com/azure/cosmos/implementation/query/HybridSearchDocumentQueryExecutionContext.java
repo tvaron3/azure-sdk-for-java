@@ -36,6 +36,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -61,8 +62,8 @@ public class HybridSearchDocumentQueryExecutionContext extends ParallelDocumentQ
     private final static String TRUE = "true";
     private final static Integer RRF_CONSTANT = 60;
 
+    protected IDocumentQueryClient client;
     private final HybridSearchQueryInfo hybridSearchQueryInfo;
-    private final IDocumentQueryClient client;
     private final RequestChargeTracker tracker;
     private final ConcurrentMap<String, QueryMetrics> queryMetricMap;
     private final Collection<ClientSideRequestStatistics> clientSideRequestStatistics;
@@ -143,7 +144,10 @@ public class HybridSearchDocumentQueryExecutionContext extends ParallelDocumentQ
 
             aggregatedGlobalStatistics = Flux.fromIterable(documentProducers)
                 .flatMap(producer -> producer.produceAsync()
-                    .map(documentProducerFeedResponse -> new GlobalFullTextSearchQueryStatistics(documentProducerFeedResponse.pageResult.getResults().get(0))))
+                    .map(documentProducerFeedResponse -> {
+                        List<Document> results = documentProducerFeedResponse.pageResult.getResults();
+                        return new GlobalFullTextSearchQueryStatistics(results.get(0));
+                    }))
                 .collectList()
                 .map(this::aggregateStatistics);
         }
@@ -310,7 +314,7 @@ public class HybridSearchDocumentQueryExecutionContext extends ParallelDocumentQ
     }
 
     private static Mono<List<List<Integer>>> computeRanks(Mono<List<List<ScoreTuple>>> componentScoresList) {
-        return componentScoresList.flatMap(componentScores -> {
+        return componentScoresList.map(componentScores -> {
             // initialize ranks as an N-D list with zeros
             List<List<Integer>> ranksInternal = new ArrayList<>();
             for (int componentIndex = 0; componentIndex < componentScores.size(); componentIndex++) {
@@ -332,18 +336,26 @@ public class HybridSearchDocumentQueryExecutionContext extends ParallelDocumentQ
                     ranksInternal.get(componentIndex).set(rankIndex, rank);
                 }
             }
-            return Mono.just(ranksInternal);
+            return ranksInternal;
         });
     }
 
     private static Mono<List<List<ScoreTuple>>> retrieveComponentScores(Mono<List<HybridSearchQueryResult<Document>>> coalescedAndSortedResults) {
-        return coalescedAndSortedResults.flatMap(results -> {
+        return coalescedAndSortedResults.map(results -> {
             List<List<ScoreTuple>> componentScoresInternal = new ArrayList<>();
             for (int i = 0; i < results.get(0).getComponentScores().size(); i++) {
                 componentScoresInternal.add(new ArrayList<>());
             }
+            List<Double> undefinedComponentScores = new ArrayList<>();
+            for (int i = 0; i < componentScoresInternal.size(); i++) {
+                undefinedComponentScores.add(-999999.0); // Default undefined value
+            }
             for (int i = 0; i < results.size(); i++) {
                 List<Double> componentScores = results.get(i).getComponentScores();
+                // TODO: # Remove this small fix after the backend changes are released to deal with empty component score scenarios
+                if (componentScores.isEmpty()) {
+                    componentScores = undefinedComponentScores;
+                }
                 for (int j = 0; j < componentScores.size(); j++) {
                     ScoreTuple scoreTuple = new ScoreTuple(componentScores.get(j), i);
                     componentScoresInternal.get(j).add(scoreTuple);
@@ -353,7 +365,7 @@ public class HybridSearchDocumentQueryExecutionContext extends ParallelDocumentQ
             for (List<ScoreTuple> scoreTuples : componentScoresInternal) {
                 scoreTuples.sort(Comparator.comparing(ScoreTuple::getScore, Comparator.reverseOrder()));
             }
-            return Mono.just(componentScoresInternal);
+            return componentScoresInternal;
         });
     }
 
@@ -485,8 +497,8 @@ public class HybridSearchDocumentQueryExecutionContext extends ParallelDocumentQ
         private final Integer index;
 
         public ScoreTuple(Double score, Integer index) {
-            this.score = score;
-            this.index = index;
+            this.score = Objects.requireNonNull(score);
+            this.index = Objects.requireNonNull(index);
         }
 
         public Integer getIndex() {
