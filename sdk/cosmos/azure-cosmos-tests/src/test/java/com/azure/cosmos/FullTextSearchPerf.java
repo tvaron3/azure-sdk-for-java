@@ -1,5 +1,6 @@
 package com.azure.cosmos;
 
+import com.azure.cosmos.models.CosmosQueryRequestOptions;
 import reactor.core.publisher.Flux;
 
 import java.io.FileWriter;
@@ -15,12 +16,12 @@ import java.util.concurrent.atomic.AtomicReference;
 public class FullTextSearchPerf{
 
     private static final boolean diagnostics = false;
-    private static final int queryIndex = 1; // 0 for full text search, 1 for full text rank, and 2 for hybrid search
-    private static final int warmUpTime = 60000; // 120000
-    private static final int testTime = 60000; // 600000
+    private static final int queryIndex = 2; // 0 for full text search, 1 for full text rank, and 2 for hybrid search
+    private static final int warmUpTime = 0; // 120000
+    private static final int testTime = 100; // 600000
     private static final int top = 1000;
     private static final boolean useTop = true;
-    private static final boolean ruCharge = true;
+    private static final boolean ruCharge = false;
     private static final boolean memory = false;
 
     public static void main(String[] args) throws InterruptedException {
@@ -29,16 +30,17 @@ public class FullTextSearchPerf{
                 .endpoint("")
                 .key("")
                 .gatewayMode()
+                //.userAgentSuffix("tomas26")
                 .buildAsyncClient();
         CosmosAsyncDatabase cosmosAsyncDatabase = cosmosAsyncClient.getDatabase("perf-tests-sdks");
         CosmosAsyncContainer cosmosAsyncContainer = cosmosAsyncDatabase
                 .getContainer("fts");
         String topStr = useTop ? "TOP " + top : "";
         String embedding  = createEmbedding().toString();
-        String ftsQuery = "SELECT " + topStr + " c.text AS Text FROM c WHERE FullTextContains(c.text, 'shoulder')";
-        String ftsRankQuery = "SELECT " + topStr + " c.text AS Text FROM c Order By Rank FullTextScore(c.text, ['may', 'music'])";
-        String hybridQuery = "SELECT " + topStr + " c.text AS Text FROM c Order By Rank RRF(FullTextScore(c.text, ['may', 'music']), VectorDistance(c.vector," + embedding + "))";
-        String vectorSearchQuery = "SELECT TOP 10000 c.text AS Text FROM c Order By VectorDistance(c.vector," + embedding + ")";
+        String ftsQuery = "SELECT " + topStr + " c.id AS Text FROM c WHERE FullTextContains(c.text, 'shoulder')";
+        String ftsRankQuery = "SELECT " + topStr + " c.id AS Text FROM c Order By Rank FullTextScore(c.text, ['may', 'music'])";
+        String hybridQuery = "SELECT " + topStr + " c.id AS Text FROM c Order By Rank RRF(FullTextScore(c.text, ['may', 'music']), VectorDistance(c.vector," + embedding + "))";
+        String vectorSearchQuery = "SELECT TOP 10000 c.id AS Text FROM c Order By VectorDistance(c.vector," + embedding + ")";
         String query;
         switch (queryIndex) {
             case 0:
@@ -80,10 +82,7 @@ public class FullTextSearchPerf{
             if (memory) {
                 Runtime runtime = Runtime.getRuntime();
                 long memoryBefore = runtime.totalMemory() - runtime.freeMemory();
-                for (int z = 0; z < 100; z++) {
-
-
-                    // Calculate the used memory
+                for (int z = 0; z < 50; z++) {
 
                     cosmosAsyncContainer.queryItems(query, Doc.class).byPage()
                             .flatMap(feedResponse -> Flux.empty()).blockLast();
@@ -96,7 +95,8 @@ public class FullTextSearchPerf{
                 long memoryAfterGC = runtime.totalMemory() - runtime.freeMemory();
                 System.out.println("Used memory in bytes after GC: " + memoryAfterGC);
             } else {
-                cosmosAsyncContainer.queryItems(query , Doc.class).byPage()
+                CosmosQueryRequestOptions options = new CosmosQueryRequestOptions().setMaxDegreeOfParallelism(10);
+                cosmosAsyncContainer.queryItems(query, Doc.class).byPage()
                         .flatMap(feedResponse -> {
 //                        for (Passenger passenger : passengerFeedResponse.getResults()) {
 //                           System.out.println(passenger);
@@ -105,6 +105,7 @@ public class FullTextSearchPerf{
                                 diagnosticsStr.set(diagnosticsStr.get() + feedResponse.getCosmosDiagnostics().toString() + "\n ---------- \n");
                             }
                             if (ruCharge) {
+                                //System.out.println(feedResponse.getActivityId());
                                 totalRUCharge.set(feedResponse.getRequestCharge() + totalRUCharge.get());
                             }
                             //System.out.println(passengerFeedResponse.getActivityId());
@@ -122,7 +123,7 @@ public class FullTextSearchPerf{
             writeDiagnostics(diagnosticsStr.get());
         }
         if (ruCharge) {
-            System.out.println("Avg RU charge: " + totalRUCharge.get() / times.size());
+            System.out.println("Total RU charge: " + totalRUCharge.get());
         }
 
 
@@ -137,7 +138,7 @@ public class FullTextSearchPerf{
 
         System.out.println("Sum: " + sum);
         System.out.println("Average: " + average);
-
+        System.out.println("Total Operations: " + times.size());
 
 
     }

@@ -1,0 +1,40 @@
+{"queryMetricsMap":{},"clientSideRequestStatistics":[],"userAgent":"azsdk-java-cosmos/4.66.0-beta.1 Linux/5.15.0-1064-azure JRE/11.0.22","queryPlanDiagnosticsContext":null}
+ ---------- 
+{"queryMetricsMap":{},"clientSideRequestStatistics":[],"userAgent":"azsdk-java-cosmos/4.66.0-beta.1 Linux/5.15.0-1064-azure JRE/11.0.22","queryPlanDiagnosticsContext":null}
+ ---------- 
+{"queryMetricsMap":{},"clientSideRequestStatistics":[],"userAgent":"azsdk-java-cosmos/4.66.0-beta.1 Linux/5.15.0-1064-azure JRE/11.0.22","queryPlanDiagnosticsContext":null}
+ ---------- 
+{"queryMetricsMap":{},"clientSideRequestStatistics":[],"userAgent":"azsdk-java-cosmos/4.66.0-beta.1 Linux/5.15.0-1064-azure JRE/11.0.22","queryPlanDiagnosticsContext":null}
+ ---------- 
+{"queryMetricsMap":{},"clientSideRequestStatistics":[],"userAgent":"azsdk-java-cosmos/4.66.0-beta.1 Linux/5.15.0-1064-azure JRE/11.0.22","queryPlanDiagnosticsContext":null}
+ ---------- 
+{"queryMetricsMap":{},"clientSideRequestStatistics":[],"userAgent":"azsdk-java-cosmos/4.66.0-beta.1 Linux/5.15.0-1064-azure JRE/11.0.22","queryPlanDiagnosticsContext":null}
+ ---------- 
+{"queryMetricsMap":{},"clientSideRequestStatistics":[],"userAgent":"azsdk-java-cosmos/4.66.0-beta.1 Linux/5.15.0-1064-azure JRE/11.0.22","queryPlanDiagnosticsContext":null}
+ ---------- 
+{"queryMetricsMap":{},"clientSideRequestStatistics":[],"userAgent":"azsdk-java-cosmos/4.66.0-beta.1 Linux/5.15.0-1064-azure JRE/11.0.22","queryPlanDiagnosticsContext":null}
+ ---------- 
+{"queryMetricsMap":{},"clientSideRequestStatistics":[],"userAgent":"azsdk-java-cosmos/4.66.0-beta.1 Linux/5.15.0-1064-azure JRE/11.0.22","queryPlanDiagnosticsContext":null}
+ ---------- 
+{"queryMetricsMap":{},"clientSideRequestStatistics":[],"userAgent":"azsdk-java-cosmos/4.66.0-beta.1 Linux/5.15.0-1064-azure JRE/11.0.22","queryPlanDiagnosticsContext":null}
+ ---------- 
+{"queryMetricsMap":{},"clientSideRequestStatistics":[],"userAgent":"azsdk-java-cosmos/4.66.0-beta.1 Linux/5.15.0-1064-azure JRE/11.0.22","queryPlanDiagnosticsContext":null}
+ ---------- 
+{"queryMetricsMap":{},"clientSideRequestStatistics":[],"userAgent":"azsdk-java-cosmos/4.66.0-beta.1 Linux/5.15.0-1064-azure JRE/11.0.22","queryPlanDiagnosticsContext":null}
+ ---------- 
+{"queryMetricsMap":{},"clientSideRequestStatistics":[],"userAgent":"azsdk-java-cosmos/4.66.0-beta.1 Linux/5.15.0-1064-azure JRE/11.0.22","queryPlanDiagnosticsContext":null}
+ ---------- 
+{"queryMetricsMap":{},"clientSideRequestStatistics":[],"userAgent":"azsdk-java-cosmos/4.66.0-beta.1 Linux/5.15.0-1064-azure JRE/11.0.22","queryPlanDiagnosticsContext":null}
+ ---------- 
+{"queryMetricsMap":{},"clientSideRequestStatistics":[],"userAgent":"azsdk-java-cosmos/4.66.0-beta.1 Linux/5.15.0-1064-azure JRE/11.0.22","queryPlanDiagnosticsContext":null}
+ ---------- 
+{"queryMetricsMap":{},"clientSideRequestStatistics":[],"userAgent":"azsdk-java-cosmos/4.66.0-beta.1 Linux/5.15.0-1064-azure JRE/11.0.22","queryPlanDiagnosticsContext":null}
+ ---------- 
+{"queryMetricsMap":{},"clientSideRequestStatistics":[],"userAgent":"azsdk-java-cosmos/4.66.0-beta.1 Linux/5.15.0-1064-azure JRE/11.0.22","queryPlanDiagnosticsContext":null}
+ ---------- 
+{"queryMetricsMap":{},"clientSideRequestStatistics":[],"userAgent":"azsdk-java-cosmos/4.66.0-beta.1 Linux/5.15.0-1064-azure JRE/11.0.22","queryPlanDiagnosticsContext":null}
+ ---------- 
+{"queryMetricsMap":{},"clientSideRequestStatistics":[],"userAgent":"azsdk-java-cosmos/4.66.0-beta.1 Linux/5.15.0-1064-azure JRE/11.0.22","queryPlanDiagnosticsContext":null}
+ ---------- 
+{"queryMetricsMap":{},"clientSideRequestStatistics":[],"userAgent":"azsdk-java-cosmos/4.66.0-beta.1 Linux/5.15.0-1064-azure JRE/11.0.22","queryPlanDiagnosticsContext":null}
+ ---------- 
