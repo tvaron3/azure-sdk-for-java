@@ -53,6 +53,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -153,6 +154,59 @@ public class QueryValidationTests extends TestSuiteBase {
             container,
             d -> d.getConstantProp(),
             documentsInserted);
+    }
+
+    @Test(groups = {"query"}, timeOut = TIMEOUT * 2)
+    public void containerRecreate() {
+        CosmosContainerProperties containerProperties = getCollectionDefinition();
+
+        createdDatabase.createContainer(
+            containerProperties,
+            ThroughputProperties.createManualThroughput(400),
+            new CosmosContainerRequestOptions()
+        ).block();
+
+        CosmosAsyncContainer container = createdDatabase.getContainer(containerProperties.getId());
+        String testContainerRid = container.read().block().getProperties().getResourceId();
+
+        int partitionDocCount = 5;
+
+        String partition1Key = UUID.randomUUID().toString();
+        String partition2Key = UUID.randomUUID().toString();
+
+        this.insertDocuments(
+            partitionDocCount,
+            Collections.singletonList(partition1Key),
+            container);
+        this.insertDocuments(
+            partitionDocCount,
+            Collections.singletonList(partition2Key),
+            container);
+
+        // Create new cosmos client
+        CosmosAsyncClient client = this.getClientBuilder().buildAsyncClient();
+        CosmosAsyncDatabase createdDatabase2 = getSharedCosmosDatabase(client);
+
+        // Recreate container
+        CosmosAsyncContainer recreatedContainer = createdDatabase2.getContainer(containerProperties.getId());
+        recreatedContainer.delete().block();
+        createdDatabase2.createContainer(
+            containerProperties,
+            ThroughputProperties.createManualThroughput(400)
+        ).block();
+        recreatedContainer = createdDatabase2.getContainer(containerProperties.getId());
+
+        assertThat(recreatedContainer.getId()).isEqualTo(container.getId());
+
+        String testRecreatedContainerRid = recreatedContainer.read().block().getProperties().getResourceId();
+        assertThat(testContainerRid).isNotEqualTo(testRecreatedContainerRid);
+
+        // Query the old container
+        String query = "select * from c";
+        CosmosPagedFlux<TestObject> queryObservable = container.queryItems(query, new CosmosQueryRequestOptions(), TestObject.class);
+        List<TestObject> result = queryObservable.byPage().collectList().block().stream().flatMap(p -> p.getResults().stream()).collect(Collectors.toList());
+        assertThat(result.size()).isGreaterThan(0);
+        safeDeleteCollection(container);
     }
 
     @Test(groups = {"query"}, timeOut = TIMEOUT)
