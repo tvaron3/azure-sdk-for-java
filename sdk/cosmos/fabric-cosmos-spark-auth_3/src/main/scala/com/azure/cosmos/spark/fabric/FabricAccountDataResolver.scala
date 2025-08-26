@@ -39,7 +39,14 @@ class FabricAccountDataResolver extends AccountDataResolver with BasicLoggingTra
       logInfo(s"FabricAccountDataResolver is enabled")
       Some((_: List[String]) => {
         // obtains the access token from fabric environment
-        val accessToken = mssparkutils.credentials.getToken(configs.audience.getOrElse(FabricAccountDataResolver.AUDIENCE))
+        // obtain the access token from Fabric environment
+        val accessToken = try {
+            mssparkutils.credentials.getToken(configs.audience.getOrElse(FabricAccountDataResolver.AUDIENCE))
+        } catch {
+            case e: Exception =>
+                logError("Failed to acquire access token", e)
+                throw e
+        }
         // Extract the expiration time from the JWT payload
         val parts = accessToken.split("\\.")
         val payloadJson = new String(java.util.Base64.getUrlDecoder.decode(parts(1)))
@@ -49,6 +56,7 @@ class FabricAccountDataResolver extends AccountDataResolver with BasicLoggingTra
           Instant.ofEpochSecond(expirationEpoch),
           ZoneOffset.UTC
         )
+        logInfo("Created access token with expiration time: ") + expirationTime)
         CosmosAccessToken(accessToken, expirationTime)
       })
     } else {
