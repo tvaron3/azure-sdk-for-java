@@ -56,7 +56,7 @@ class FabricAccountDataResolver extends AccountDataResolver with BasicLoggingTra
           Instant.ofEpochSecond(expirationEpoch),
           ZoneOffset.UTC
         )
-        logInfo("Created access token with expiration time: ") + expirationTime)
+        logInfo(s"Created access token with expiration time: $expirationTime")
         CosmosAccessToken(accessToken, expirationTime)
       })
     } else {
