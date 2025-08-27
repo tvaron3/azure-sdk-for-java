@@ -418,7 +418,12 @@ public class FeedResponse<T> implements ContinuablePage<String, T> {
         String headerName = useEtagAsContinuation
                                 ? HttpConstants.HttpHeaders.E_TAG
                                 : HttpConstants.HttpHeaders.CONTINUATION;
-        return getValueOrNull(header, headerName);
+        String value = getValueOrNull(header, headerName);
+        if (value != null) {
+            return value;
+        } else {
+            return getValueOrNull(header, "ETag");
+        }
     }
 
     /**
