@@ -406,11 +406,6 @@ public class RxGatewayStoreModel implements RxStoreModel, HttpTransportSerialize
 
             // header key/value pairs
             HttpHeaders httpResponseHeaders = httpResponse.headers();
-            if (logger.isErrorEnabled()) {
-                StringBuilder headersLog = new StringBuilder();
-                httpResponseHeaders.toMap().forEach((k, v) -> headersLog.append(k).append(": ").append(v).append('\n'));
-                logger.error("Response headers:\n{}", headersLog);
-            }
             int httpResponseStatus = httpResponse.statusCode();
             if (httpResponseStatus == 500) {
                 logger.error("Response body with Root Activity ID: {}", httpResponse.bodyAsString().block());
