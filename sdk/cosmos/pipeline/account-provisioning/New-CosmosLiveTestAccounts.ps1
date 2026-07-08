@@ -15,8 +15,8 @@
       4. Assemble the versioned cosmos-live-test-accounts JSON and emit it (to stdout,
          and to -OutputPath if provided).
 
-    This script does NOT touch Key Vault. Pipe/pass its JSON output to
-    Set-CosmosLiveTestAccountsSecret.ps1 to publish the secret.
+    This script does NOT touch Key Vault. Update the cosmos-live-test-accounts secret /
+    ADO variable manually with the JSON it outputs.
 
     Uses the Az PowerShell modules (Az.Accounts, Az.Resources, Az.CosmosDB).
 
@@ -39,14 +39,12 @@
     Prefix for the globally-unique Cosmos account names. Defaults to 'sdkci'.
 
 .PARAMETER OutputPath
-    Optional path to write the assembled JSON to. The JSON is always also written to the
-    pipeline (stdout) so it can be piped to Set-CosmosLiveTestAccountsSecret.ps1.
-    NOTE: the JSON contains account keys - treat any file you write as a secret.
+    Optional path to write the assembled JSON to. The JSON is always also written to
+    stdout. NOTE: the JSON contains account keys - treat any file you write as a secret.
 
 .EXAMPLE
-    # Create/refresh accounts and publish the secret in one pipeline
-    ./New-CosmosLiveTestAccounts.ps1 -SubscriptionId <sub> |
-        ./Set-CosmosLiveTestAccountsSecret.ps1 -KeyVaultName <kv>
+    # Create/refresh accounts and write the JSON to a file, then update the secret manually
+    ./New-CosmosLiveTestAccounts.ps1 -SubscriptionId <sub> -OutputPath ./accounts.json
 
 .EXAMPLE
     # Dry run - creates nothing, prints the assembled JSON with keys stubbed
@@ -235,6 +233,6 @@ if ($OutputPath) {
     }
 }
 
-Write-Info "Assembled $($secret.accounts.Count) accounts. Pipe this JSON to Set-CosmosLiveTestAccountsSecret.ps1 to publish."
-# Emit the JSON to the pipeline so it can be piped to the secret-upload script.
+Write-Info "Assembled $($secret.accounts.Count) accounts. Update the cosmos-live-test-accounts secret manually with this JSON."
+# Emit the JSON to stdout so it can be captured/redirected.
 Write-Output $secretJson
