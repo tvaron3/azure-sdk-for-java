@@ -476,6 +476,17 @@
   ],
   "overrides": [
     {
+      "filename": "sdk/cosmos/pipeline/**",
+      "words": [
+        "esac",
+        "issecret",
+        "pmerge",
+        "Pfast",
+        "sdkci",
+        "WHATIF"
+      ]
+    },
+    {
       "filename": "sdk/planetarycomputer/**",
       "words": [
         "afmhot",
