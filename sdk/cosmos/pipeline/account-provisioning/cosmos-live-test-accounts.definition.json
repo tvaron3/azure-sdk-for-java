@@ -1,0 +1,107 @@
+{
+  "comment": "Desired fixed Cosmos accounts for the Java SDK live tests. Consumed by New-CosmosLiveTestAccounts.ps1 to (re)create accounts in the sdk-ci resource group and to emit the cosmos-live-test-accounts Key Vault secret. Account names here are the logical selectors used by the azure-sdk-for-java tests.yml / kafka.yml stages. accountNamePrefix + name form the actual Cosmos account name (must be globally unique, <=44 chars, lowercase). NOTE: preferredLocations values mirror the existing pipeline PREFERRED_LOCATIONS and may name a region outside the account's provisioned regions (client falls back). NOTE: thinClient=true only tags the emitted secret; enabling thin-client on the account itself requires the correct account 'capabilities' entry / federation config once confirmed - add it to a per-account \"capabilities\": [\"<name>\"] array.",
+  "accounts": [
+    {
+      "name": "single-session",
+      "defaultConsistencyLevel": "Session",
+      "enableMultipleWriteLocations": false,
+      "enableMultipleRegions": false,
+      "enablePartitionMerge": false,
+      "thinClient": false,
+      "includeSecondaryKey": true,
+      "capabilities": [
+        "EnableNoSQLVectorSearch"
+      ]
+    },
+    {
+      "name": "single-session-pmerge",
+      "defaultConsistencyLevel": "Session",
+      "enableMultipleWriteLocations": false,
+      "enableMultipleRegions": false,
+      "enablePartitionMerge": true,
+      "thinClient": false,
+      "includeSecondaryKey": true,
+      "capabilities": [
+        "EnableNoSQLVectorSearch"
+      ]
+    },
+    {
+      "name": "single-strong",
+      "defaultConsistencyLevel": "Strong",
+      "enableMultipleWriteLocations": false,
+      "enableMultipleRegions": false,
+      "enablePartitionMerge": false,
+      "thinClient": false,
+      "includeSecondaryKey": true,
+      "capabilities": [
+        "EnableNoSQLVectorSearch"
+      ]
+    },
+    {
+      "name": "multiregion-strong",
+      "defaultConsistencyLevel": "Strong",
+      "enableMultipleWriteLocations": false,
+      "enableMultipleRegions": true,
+      "enablePartitionMerge": false,
+      "thinClient": false,
+      "includeSecondaryKey": true,
+      "capabilities": [
+        "EnableNoSQLVectorSearch"
+      ]
+    },
+    {
+      "name": "multimaster-multiregion-session",
+      "defaultConsistencyLevel": "Session",
+      "enableMultipleWriteLocations": true,
+      "enableMultipleRegions": true,
+      "enablePartitionMerge": false,
+      "thinClient": false,
+      "preferredLocations": [
+        "East US 2"
+      ],
+      "includeSecondaryKey": true,
+      "capabilities": [
+        "EnableNoSQLVectorSearch"
+      ]
+    },
+    {
+      "name": "multiregion-tc-session",
+      "defaultConsistencyLevel": "Session",
+      "enableMultipleWriteLocations": false,
+      "enableMultipleRegions": true,
+      "enablePartitionMerge": false,
+      "thinClient": true,
+      "includeSecondaryKey": true
+    },
+    {
+      "name": "gsi-single-session",
+      "defaultConsistencyLevel": "Session",
+      "enableMultipleWriteLocations": false,
+      "enableMultipleRegions": false,
+      "enablePartitionMerge": false,
+      "thinClient": false,
+      "preferredLocations": [
+        "East US 2"
+      ],
+      "includeSecondaryKey": true
+    },
+    {
+      "name": "kafka-session",
+      "defaultConsistencyLevel": "Session",
+      "enableMultipleWriteLocations": false,
+      "enableMultipleRegions": false,
+      "enablePartitionMerge": false,
+      "thinClient": false,
+      "includeSecondaryKey": true
+    }
+  ],
+  "regionDefaults": {
+    "singleRegion": [
+      "West Central US"
+    ],
+    "multiRegion": [
+      "West Central US",
+      "Central US"
+    ]
+  }
+}

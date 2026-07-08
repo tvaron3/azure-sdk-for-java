@@ -23,7 +23,6 @@ import java.util.stream.Collectors;
 public class ReadFeedDatabasesTest extends TestSuiteBase {
 
     private List<CosmosDatabaseProperties> createdDatabases = new ArrayList<>();
-    private List<CosmosDatabaseProperties> allDatabases = new ArrayList<>();
 
     private CosmosAsyncClient client;
 
@@ -38,11 +37,13 @@ public class ReadFeedDatabasesTest extends TestSuiteBase {
 
         CosmosPagedFlux<CosmosDatabaseProperties> feedObservable = client.readAllDatabases();
 
-        int expectedPageSize = (allDatabases.size() + maxItemCount - 1) / maxItemCount;
+        // readAllDatabases is an account-global read. Live tests share a fixed account, so
+        // other test runs may create/delete databases concurrently. Assert only that the
+        // databases created by this test are present (containment) rather than asserting the
+        // exact account-wide set/count/page-count, which would be non-deterministic.
         FeedResponseListValidator<CosmosDatabaseProperties> validator = new FeedResponseListValidator.Builder<CosmosDatabaseProperties>()
-                .totalSize(allDatabases.size())
-                .exactlyContainsInAnyOrder(allDatabases.stream().map(d -> d.getResourceId()).collect(Collectors.toList()))
-                .numberOfPages(expectedPageSize)
+                .containsResourceIds(createdDatabases.stream().map(d -> d.getResourceId()).collect(Collectors.toList()))
+                .numberOfPagesIsGreaterThanOrEqualTo(1)
                 .pageSatisfy(0, new FeedResponseValidator.Builder<CosmosDatabaseProperties>()
                         .requestChargeGreaterThanOrEqualTo(1.0).build())
                 .build();
@@ -53,13 +54,9 @@ public class ReadFeedDatabasesTest extends TestSuiteBase {
     @BeforeClass(groups = { "query" }, timeOut = SETUP_TIMEOUT)
     public void before_ReadFeedDatabasesTest() throws URISyntaxException {
         client = getClientBuilder().buildAsyncClient();
-        allDatabases = client.readAllDatabases()
-                             .collectList()
-                             .block();
         for(int i = 0; i < 5; i++) {
             createdDatabases.add(createDatabase(client));
         }
-        allDatabases.addAll(createdDatabases);
     }
 
     public CosmosDatabaseProperties createDatabase(CosmosAsyncClient client) {

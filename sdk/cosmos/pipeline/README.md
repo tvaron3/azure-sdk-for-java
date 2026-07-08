@@ -25,10 +25,11 @@ provisioner). It is the Track A mechanism from the retargeting plan.
    `SECONDARY_ACCOUNT_KEY` when present) for the tests to read via `TestConfigurations`.
    It does NOT set `ACCOUNT_CONSISTENCY`/`PREFERRED_LOCATIONS` — those are matrix-controlled
    per leg.
-4. The account provisioning scripts (in the `cosmos-sdk-copilot-toolkit` repo) rewrite
-   this one secret on every ephemeral-tenant rotation (`New-CosmosLiveTestAccounts.ps1`
-   creates the accounts and outputs the JSON; `Set-CosmosLiveTestAccountsSecret.ps1`
-   publishes it), so pipelines pick up refreshed endpoints/keys automatically.
+4. The account provisioning scripts (in [`account-provisioning/`](account-provisioning/))
+   rewrite this one secret on every ephemeral-tenant rotation
+   (`New-CosmosLiveTestAccounts.ps1` creates the accounts and outputs the JSON;
+   `Set-CosmosLiveTestAccountsSecret.ps1` publishes it), so pipelines pick up refreshed
+   endpoints/keys automatically.
 
 All Cosmos live-test matrix legs run on **linux** agents, so the parser is bash + jq.
 
