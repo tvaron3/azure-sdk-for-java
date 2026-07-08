@@ -45,7 +45,8 @@ public class ReadFeedOffersTest extends TestSuiteBase {
     public final String databaseId = DatabaseForTest.generateId();
 
     private Database createdDatabase;
-    private List<Offer> allOffers = new ArrayList<>();
+    private final List<DocumentCollection> createdCollections = new ArrayList<>();
+    private List<Offer> expectedOffers = new ArrayList<>();
 
     private AsyncDocumentClient client;
 
@@ -78,13 +79,13 @@ public class ReadFeedOffersTest extends TestSuiteBase {
 
             Flux<FeedResponse<Offer>> feedObservable = client.readOffers(dummyState);
 
-            int maxItemCount = ModelBridgeInternal.getMaxItemCountFromQueryRequestOptions(options);
-            int expectedPageSize = (allOffers.size() + maxItemCount - 1) / maxItemCount;
-
+            // readOffers is an account-global read. Live tests share a fixed account, so
+            // other test runs may create/delete containers (and thus offers) concurrently.
+            // Assert only that the offers for the containers created by this test are present
+            // (containment) rather than asserting the exact account-wide set/count/page-count.
             FeedResponseListValidator<Offer> validator = new FeedResponseListValidator.Builder<Offer>()
-                .totalSize(allOffers.size())
-                .exactlyContainsInAnyOrder(allOffers.stream().map(d -> d.getResourceId()).collect(Collectors.toList()))
-                .numberOfPages(expectedPageSize)
+                .containsResourceIds(expectedOffers.stream().map(d -> d.getResourceId()).collect(Collectors.toList()))
+                .numberOfPagesIsGreaterThanOrEqualTo(1)
                 .pageSatisfy(0, new FeedResponseValidator.Builder<Offer>()
                     .requestChargeGreaterThanOrEqualTo(1.0).build())
                 .build();
@@ -98,7 +99,7 @@ public class ReadFeedOffersTest extends TestSuiteBase {
         createdDatabase = createDatabase(client, databaseId);
 
         for(int i = 0; i < 3; i++) {
-            createCollections(client);
+            createdCollections.add(createCollections(client));
         }
 
         QueryFeedOperationState offerDummyState = TestUtils.createDummyQueryFeedOperationState(
@@ -109,12 +110,18 @@ public class ReadFeedOffersTest extends TestSuiteBase {
         );
 
         try {
-            allOffers = client.readOffers(offerDummyState)
+            List<String> createdCollectionRids = createdCollections.stream()
+                .map(DocumentCollection::getResourceId)
+                .collect(Collectors.toList());
+            expectedOffers = client.readOffers(offerDummyState)
                               .map(FeedResponse::getResults)
                               .collectList()
                               .map(list -> list.stream().flatMap(Collection::stream).collect(Collectors.toList()))
                               .single()
-                              .block();
+                              .block()
+                              .stream()
+                              .filter(o -> createdCollectionRids.contains(o.getOfferResourceId()))
+                              .collect(Collectors.toList());
         } finally {
             safeClose(offerDummyState);
         }
