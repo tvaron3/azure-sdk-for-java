@@ -28,8 +28,11 @@
     "single-session": "",
     "single-session-pmerge": "",
     "single-strong": "",
+    "single-session-split": "",
+    "single-strong-split": "",
     "multiregion-strong": "",
-    "multimaster-multiregion-session": ""
+    "multimaster-multiregion-session": "",
+    "multimaster-multiregion-session-split": ""
   },
   "include": [
     {
@@ -62,7 +65,7 @@
       "DESIRED_CONSISTENCIES": "[\"Session\"]",
       "ACCOUNT_CONSISTENCY": "Session",
       "PROTOCOLS": "[\"Tcp\"]",
-      "ProfileFlag": [ "-Pcfp-split", "-Psplit", "-Pquery", "-Pfast", "-Pdirect", "-Pconsistency-overrides" ],
+      "ProfileFlag": [ "-Pquery", "-Pfast", "-Pdirect", "-Pconsistency-overrides" ],
       "ArmTemplateParameters": "@{ enableMultipleWriteLocations = $false; defaultConsistencyLevel = 'Session' }",
       "AdditionalArgs": [
         "-DargLine=\"-Dio.netty.handler.ssl.noOpenSsl=true\""
@@ -76,6 +79,23 @@
       "AccountSelector": "single-session"
     },
     {
+      "DESIRED_CONSISTENCIES": "[\"Session\"]",
+      "ACCOUNT_CONSISTENCY": "Session",
+      "PROTOCOLS": "[\"Tcp\"]",
+      "ProfileFlag": [ "-Pcfp-split", "-Psplit" ],
+      "ArmTemplateParameters": "@{ enableMultipleWriteLocations = $false; defaultConsistencyLevel = 'Session' }",
+      "AdditionalArgs": [
+        "-DargLine=\"-Dio.netty.handler.ssl.noOpenSsl=true\""
+      ],
+      "Agent": {
+        "ubuntu": {
+          "OSVmImage": "env:LINUXVMIMAGE",
+          "Pool": "env:LINUXPOOL"
+        }
+      },
+      "AccountSelector": "single-session-split"
+    },
+    {
       "DESIRED_CONSISTENCIES": [
         "[\"Strong\", \"Session\"]",
         "[\"BoundedStaleness\"]",
@@ -85,8 +105,6 @@
       "ArmTemplateParameters": "@{ enableMultipleWriteLocations = $false; defaultConsistencyLevel = 'Strong' }",
       "PROTOCOLS": "[\"Tcp\"]",
       "ProfileFlag": [
-        "-Pcfp-split",
-        "-Psplit",
         "-Pquery",
         "-Pfast"
       ],
@@ -97,6 +115,27 @@
         }
       },
       "AccountSelector": "single-strong"
+    },
+    {
+      "DESIRED_CONSISTENCIES": [
+        "[\"Strong\", \"Session\"]",
+        "[\"BoundedStaleness\"]",
+        "[\"ConsistentPrefix\"]"
+      ],
+      "ACCOUNT_CONSISTENCY": "Strong",
+      "ArmTemplateParameters": "@{ enableMultipleWriteLocations = $false; defaultConsistencyLevel = 'Strong' }",
+      "PROTOCOLS": "[\"Tcp\"]",
+      "ProfileFlag": [
+        "-Pcfp-split",
+        "-Psplit"
+      ],
+      "Agent": {
+        "ubuntu": {
+          "OSVmImage": "env:LINUXVMIMAGE",
+          "Pool": "env:LINUXPOOL"
+        }
+      },
+      "AccountSelector": "single-strong-split"
     },
     {
       "DESIRED_CONSISTENCY": "BoundedStaleness",
@@ -243,8 +282,6 @@
       },
       "PROTOCOLS": "[\"Tcp\"]",
       "ProfileFlag": [
-        "-Pcfp-split",
-        "-Psplit",
         "-Pquery",
         "-Pflaky-multi-master",
         "-Pcircuit-breaker-misc-direct",
@@ -260,6 +297,28 @@
         }
       },
       "AccountSelector": "multimaster-multiregion-session"
+    },
+    {
+      "DESIRED_CONSISTENCIES": "[\"Session\"]",
+      "ACCOUNT_CONSISTENCY": "Session",
+      "ArmConfig": {
+        "MultiMaster_MultiRegion": {
+          "ArmTemplateParameters": "@{ enableMultipleWriteLocations = $true; defaultConsistencyLevel = 'Session'; enableMultipleRegions = $true }",
+          "PREFERRED_LOCATIONS": "[\"East US 2\"]"
+        }
+      },
+      "PROTOCOLS": "[\"Tcp\"]",
+      "ProfileFlag": [
+        "-Pcfp-split",
+        "-Psplit"
+      ],
+      "Agent": {
+        "ubuntu": {
+          "OSVmImage": "env:LINUXVMIMAGE",
+          "Pool": "env:LINUXPOOL"
+        }
+      },
+      "AccountSelector": "multimaster-multiregion-session-split"
     },
     {
       "DESIRED_CONSISTENCIES": "[\"Strong\"]",

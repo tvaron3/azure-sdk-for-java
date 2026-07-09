@@ -20,6 +20,8 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 public class ReadFeedDatabasesTest extends TestSuiteBase {
 
     private List<CosmosDatabaseProperties> createdDatabases = new ArrayList<>();
@@ -57,6 +59,12 @@ public class ReadFeedDatabasesTest extends TestSuiteBase {
         for(int i = 0; i < 5; i++) {
             createdDatabases.add(createDatabase(client));
         }
+
+        // Guard against the containment assertion silently degrading to a no-op: if no databases
+        // were created the readDatabases() test would assert nothing meaningful on a shared account.
+        assertThat(createdDatabases)
+            .describedAs("databases created by this test")
+            .isNotEmpty();
     }
 
     public CosmosDatabaseProperties createDatabase(CosmosAsyncClient client) {

@@ -27,10 +27,12 @@
     Resource group for the accounts. Created if it does not exist. Defaults to 'sdk-ci'.
 
 .PARAMETER Location
-    Primary/write region for the accounts. Defaults to 'West Central US'.
+    Optional override for the primary/write region. When omitted, the primary region comes
+    from the definition's regionDefaults (single source of truth; matches test-resources.json).
 
 .PARAMETER SecondaryLocation
-    Secondary region used for multi-region accounts. Defaults to 'Central US'.
+    Optional override for the secondary region of multi-region accounts. When omitted, it
+    comes from the definition's regionDefaults.multiRegion.
 
 .PARAMETER DefinitionPath
     Path to the account definition JSON. Defaults to the file next to this script.
@@ -61,9 +63,9 @@ param(
 
     [string] $ResourceGroupName = 'sdk-ci',
 
-    [string] $Location = 'West Central US',
+    [string] $Location,
 
-    [string] $SecondaryLocation = 'Central US',
+    [string] $SecondaryLocation,
 
     [string] $DefinitionPath = (Join-Path $PSScriptRoot 'cosmos-live-test-accounts.definition.json'),
 
@@ -88,28 +90,47 @@ foreach ($m in @('Az.Accounts', 'Az.Resources', 'Az.CosmosDB')) {
 if (-not (Test-Path $DefinitionPath)) { throw "Definition file not found: $DefinitionPath" }
 $definition = Get-Content -Raw -Path $DefinitionPath | ConvertFrom-Json
 
+# Regions are defined once in the definition's regionDefaults so the provisioned topology
+# matches sdk/cosmos/test-resources.json (the ARM template the old flow used). The optional
+# -Location / -SecondaryLocation params override the primary/secondary region for ad-hoc runs.
+if (-not ($definition.PSObject.Properties.Name -contains 'regionDefaults')) {
+    throw "Definition '$DefinitionPath' is missing 'regionDefaults' (singleRegion / multiRegion)."
+}
+$singleRegionList = @($definition.regionDefaults.singleRegion)
+$multiRegionList  = @($definition.regionDefaults.multiRegion)
+if ($singleRegionList.Count -lt 1 -or $multiRegionList.Count -lt 2) {
+    throw "regionDefaults must provide singleRegion (>=1) and multiRegion (>=2) entries."
+}
+if ($Location) {
+    $singleRegionList[0] = $Location
+    $multiRegionList[0]  = $Location
+}
+if ($SecondaryLocation) {
+    $multiRegionList[1] = $SecondaryLocation
+}
+$primaryRegion = $multiRegionList[0]
+
 Write-Info "Selecting subscription $SubscriptionId"
 $null = Set-AzContext -Subscription $SubscriptionId
 
 # --- Resource group (create if missing) --------------------------------------
 if (-not (Get-AzResourceGroup -Name $ResourceGroupName -ErrorAction SilentlyContinue)) {
     if ($PSCmdlet.ShouldProcess($ResourceGroupName, 'Create resource group')) {
-        Write-Info "Creating resource group $ResourceGroupName in $Location"
-        $null = New-AzResourceGroup -Name $ResourceGroupName -Location $Location
+        Write-Info "Creating resource group $ResourceGroupName in $primaryRegion"
+        $null = New-AzResourceGroup -Name $ResourceGroupName -Location $primaryRegion
     }
 } else {
     Write-Info "Resource group $ResourceGroupName already exists"
 }
 
-# --- Helper: build the -LocationObject list for an account -------------------
-function New-LocationObjects([bool] $multiRegion) {
-    $locations = @(
-        New-AzCosmosDBLocationObject -LocationName $Location -FailoverPriority 0 -IsZoneRedundant $false
-    )
-    if ($multiRegion) {
-        $locations += New-AzCosmosDBLocationObject -LocationName $SecondaryLocation -FailoverPriority 1 -IsZoneRedundant $false
+# --- Helper: build the -LocationObject list from a region list --------------
+# First region is the write region (failoverPriority 0); the rest are read regions.
+function New-LocationObjects([string[]] $regionList) {
+    $locations = @()
+    for ($i = 0; $i -lt $regionList.Count; $i++) {
+        $locations += New-AzCosmosDBLocationObject -LocationName $regionList[$i] -FailoverPriority $i -IsZoneRedundant $false
     }
-    return $locations
+    return ,$locations
 }
 
 # --- Create / update each account, then collect endpoint + keys --------------
@@ -127,7 +148,8 @@ foreach ($acct in $definition.accounts) {
 
     $multiRegion = [bool]$acct.enableMultipleRegions
     $multiWrite  = [bool]$acct.enableMultipleWriteLocations
-    $locations   = New-LocationObjects $multiRegion
+    $regionList  = if ($multiRegion) { $multiRegionList } else { $singleRegionList }
+    $locations   = New-LocationObjects $regionList
 
     $capabilities = @()
     if ($acct.PSObject.Properties.Name -contains 'capabilities') {
@@ -217,8 +239,7 @@ foreach ($acct in $definition.accounts) {
     if ($acct.PSObject.Properties.Name -contains 'preferredLocations') {
         $entry['preferredLocations'] = [string[]]@($acct.preferredLocations)
     }
-    $regions = if ($multiRegion) { @($Location, $SecondaryLocation) } else { @($Location) }
-    $entry['regions'] = [string[]]$regions
+    $entry['regions'] = [string[]]$regionList
 
     $secret.accounts[$selector] = $entry
 }

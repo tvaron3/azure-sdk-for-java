@@ -35,6 +35,8 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 //TODO: change to use external TestSuiteBase
 public class ReadFeedOffersTest extends TestSuiteBase {
 
@@ -113,6 +115,9 @@ public class ReadFeedOffersTest extends TestSuiteBase {
             List<String> createdCollectionRids = createdCollections.stream()
                 .map(DocumentCollection::getResourceId)
                 .collect(Collectors.toList());
+            // An Offer's getOfferResourceId() is the resource id of the collection it applies to,
+            // whereas getResourceId() is the Offer's own resource id. Filter the account-global
+            // offer feed down to the offers that belong to the collections this test created.
             expectedOffers = client.readOffers(offerDummyState)
                               .map(FeedResponse::getResults)
                               .collectList()
@@ -125,6 +130,13 @@ public class ReadFeedOffersTest extends TestSuiteBase {
         } finally {
             safeClose(offerDummyState);
         }
+
+        // Guard against the containment assertion silently degrading to a no-op: each created
+        // collection has exactly one dedicated-throughput offer, so we must have resolved one
+        // offer per collection. If this fails the offer read/filtering is broken, not the account.
+        assertThat(expectedOffers)
+            .describedAs("offers resolved for the collections created by this test")
+            .hasSize(createdCollections.size());
     }
 
     @AfterClass(groups = { "query" }, timeOut = SHUTDOWN_TIMEOUT, alwaysRun = true)

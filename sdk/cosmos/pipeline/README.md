@@ -25,7 +25,7 @@ provisioner). It is the Track A mechanism from the retargeting plan.
    `SECONDARY_ACCOUNT_KEY` when present) for the tests to read via `TestConfigurations`.
    It does NOT set `ACCOUNT_CONSISTENCY`/`PREFERRED_LOCATIONS` — those are matrix-controlled
    per leg.
-4. The account provisioning script (in [`account-provisioning/`](account-provisioning/))
+4. The account provisioning script (in [`account-provisioning/`](https://github.com/Azure/azure-sdk-for-java/tree/main/sdk/cosmos/pipeline/account-provisioning))
    regenerates the accounts + JSON on every ephemeral-tenant rotation
    (`New-CosmosLiveTestAccounts.ps1` creates the accounts and outputs the JSON). The
    secret is then updated manually with that JSON, so pipelines pick up refreshed
@@ -35,9 +35,14 @@ All Cosmos live-test matrix legs run on **linux** agents, so the parser is bash 
 
 ## Selectors (from the test matrices)
 
-`single-session`, `single-session-pmerge`, `single-strong`, `multiregion-strong`,
-`multimaster-multiregion-session`, `multiregion-tc-session`, `gsi-single-session`,
+`single-session`, `single-session-pmerge`, `single-strong`, `single-session-split`,
+`single-strong-split`, `multiregion-strong`, `multimaster-multiregion-session`,
+`multimaster-multiregion-session-split`, `multiregion-tc-session`, `gsi-single-session`,
 `kafka-session`.
+
+The `*-split` accounts are dedicated to the partition-split-forcing profiles
+(`-Pcfp-split`, `-Psplit`), which raise container throughput to force splits. Isolating
+them keeps that split churn off the shared query/fast/direct accounts.
 
 ## Wiring a stage (tests.yml / kafka.yml)
 

@@ -5,7 +5,7 @@
       "endpoint": "https://REPLACE-single-session.documents.azure.com:443/",
       "key": "REPLACE_KEY",
       "regions": [
-        "West Central US"
+        "Central US"
       ],
       "consistency": "Session",
       "multiWrite": false,
@@ -15,7 +15,7 @@
       "endpoint": "https://REPLACE-single-session-pmerge.documents.azure.com:443/",
       "key": "REPLACE_KEY",
       "regions": [
-        "West Central US"
+        "Central US"
       ],
       "consistency": "Session",
       "multiWrite": false,
@@ -25,7 +25,27 @@
       "endpoint": "https://REPLACE-single-strong.documents.azure.com:443/",
       "key": "REPLACE_KEY",
       "regions": [
-        "West Central US"
+        "Central US"
+      ],
+      "consistency": "Strong",
+      "multiWrite": false,
+      "secondaryKey": "REPLACE_SECONDARY_KEY"
+    },
+    "single-session-split": {
+      "endpoint": "https://REPLACE-single-session-split.documents.azure.com:443/",
+      "key": "REPLACE_KEY",
+      "regions": [
+        "Central US"
+      ],
+      "consistency": "Session",
+      "multiWrite": false,
+      "secondaryKey": "REPLACE_SECONDARY_KEY"
+    },
+    "single-strong-split": {
+      "endpoint": "https://REPLACE-single-strong-split.documents.azure.com:443/",
+      "key": "REPLACE_KEY",
+      "regions": [
+        "Central US"
       ],
       "consistency": "Strong",
       "multiWrite": false,
@@ -35,8 +55,8 @@
       "endpoint": "https://REPLACE-multiregion-strong.documents.azure.com:443/",
       "key": "REPLACE_KEY",
       "regions": [
-        "West Central US",
-        "Central US"
+        "Central US",
+        "East US 2"
       ],
       "consistency": "Strong",
       "multiWrite": false,
@@ -46,8 +66,22 @@
       "endpoint": "https://REPLACE-multimaster-multiregion-session.documents.azure.com:443/",
       "key": "REPLACE_KEY",
       "regions": [
-        "West Central US",
-        "Central US"
+        "Central US",
+        "East US 2"
+      ],
+      "preferredLocations": [
+        "East US 2"
+      ],
+      "consistency": "Session",
+      "multiWrite": true,
+      "secondaryKey": "REPLACE_SECONDARY_KEY"
+    },
+    "multimaster-multiregion-session-split": {
+      "endpoint": "https://REPLACE-multimaster-multiregion-session-split.documents.azure.com:443/",
+      "key": "REPLACE_KEY",
+      "regions": [
+        "Central US",
+        "East US 2"
       ],
       "preferredLocations": [
         "East US 2"
@@ -60,8 +94,8 @@
       "endpoint": "https://REPLACE-multiregion-tc-session.documents.azure.com:443/",
       "key": "REPLACE_KEY",
       "regions": [
-        "West Central US",
-        "Central US"
+        "Central US",
+        "East US 2"
       ],
       "consistency": "Session",
       "multiWrite": false,
@@ -72,10 +106,7 @@
       "endpoint": "https://REPLACE-gsi-single-session.documents.azure.com:443/",
       "key": "REPLACE_KEY",
       "regions": [
-        "East US 2"
-      ],
-      "preferredLocations": [
-        "East US 2"
+        "Central US"
       ],
       "consistency": "Session",
       "multiWrite": false,
@@ -86,7 +117,7 @@
       "key": "REPLACE_KEY",
       "secondaryKey": "REPLACE_SECONDARY_KEY",
       "regions": [
-        "West Central US"
+        "Central US"
       ],
       "consistency": "Session",
       "multiWrite": false
