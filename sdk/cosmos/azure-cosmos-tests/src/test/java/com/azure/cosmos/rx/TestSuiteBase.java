@@ -186,6 +186,65 @@ public abstract class TestSuiteBase extends CosmosAsyncClientTest {
     }
 
     /**
+     * True for transient control-plane failures that live tests can hit when many concurrent
+     * matrix legs share a fixed account: 408 (request timeout), 429 (throttling, including the
+     * metadata/control-plane 429 substatus 3200 that the default client retry does not cover
+     * well), 500, and 503. These are safe to retry for idempotent database/container CRUD;
+     * deterministic failures (e.g. 400 bad request, 409 conflict) are intentionally excluded.
+     */
+    private static boolean isTransientControlPlaneFailure(Throwable t) {
+        Throwable unwrapped = Exceptions.unwrap(t);
+        if (!(unwrapped instanceof CosmosException)) {
+            return false;
+        }
+        int statusCode = ((CosmosException) unwrapped).getStatusCode();
+        return statusCode == HttpConstants.StatusCodes.REQUEST_TIMEOUT
+            || statusCode == HttpConstants.StatusCodes.TOO_MANY_REQUESTS
+            || statusCode == HttpConstants.StatusCodes.INTERNAL_SERVER_ERROR
+            || statusCode == HttpConstants.StatusCodes.SERVICE_UNAVAILABLE;
+    }
+
+    /**
+     * Executes a control-plane operation (database/container CRUD) retrying only transient
+     * shared-account contention failures (see {@link #isTransientControlPlaneFailure}). The
+     * default SDK throttling retry (9 attempts / 30s) is not enough to absorb the metadata-429 /
+     * 408 storms that occur when many live-test legs do CRUD on one shared fixed account. Any
+     * non-transient failure (e.g. an expected 400/409) is rethrown immediately so negative-path
+     * assertions are preserved.
+     *
+     * @param action      the control-plane operation to run
+     * @param beforeRetry optional hook run before each retry (e.g. to reset a mock tracer so a
+     *                    failed attempt's spans do not leak into the next attempt); may be null
+     */
+    protected static <T> T executeControlPlaneWithRetry(Supplier<T> action, Runnable beforeRetry) {
+        final int maxAttempts = 20;
+        final long retryDelayMillis = Duration.ofSeconds(3).toMillis();
+        for (int attempt = 1; ; attempt++) {
+            try {
+                return action.get();
+            } catch (RuntimeException e) {
+                if (attempt >= maxAttempts || !isTransientControlPlaneFailure(e)) {
+                    throw e;
+                }
+                logger.warn("Transient control-plane failure (attempt {}/{}): {}", attempt, maxAttempts, e.getMessage());
+                if (beforeRetry != null) {
+                    beforeRetry.run();
+                }
+                try {
+                    Thread.sleep(retryDelayMillis);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw e;
+                }
+            }
+        }
+    }
+
+    protected static <T> T executeControlPlaneWithRetry(Supplier<T> action) {
+        return executeControlPlaneWithRetry(action, null);
+    }
+
+    /**
      * Executes an action with retry logic for transient failures in @BeforeClass setup methods.
      * Retries up to maxRetries times with increasing backoff (1s, 2s, 3s...).
      *
@@ -2785,9 +2844,18 @@ public abstract class TestSuiteBase extends CosmosAsyncClientTest {
 
         logger.info("Truncating DocumentCollection {} ...", collection.getId());
 
+        // Live tests now share fixed accounts across concurrent CI legs, so cleanup can hit
+        // transient metadata/data throttling (429). Use the same generous throttling retry as
+        // the housekeeping client (well above the SDK default of 9) so truncation during
+        // setup/cleanup absorbs 429s instead of failing the @BeforeClass.
+        ThrottlingRetryOptions truncateRetryOptions = new ThrottlingRetryOptions();
+        truncateRetryOptions.setMaxRetryAttemptsOnThrottledRequests(200);
+        truncateRetryOptions.setMaxRetryWaitTime(Duration.ofSeconds(SUITE_SETUP_TIMEOUT));
+
         try (CosmosAsyncClient cosmosClient = new CosmosClientBuilder()
             .key(TestConfigurations.MASTER_KEY)
             .endpoint(TestConfigurations.HOST)
+            .throttlingRetryOptions(truncateRetryOptions)
             .buildAsyncClient()) {
 
             CosmosQueryRequestOptions options = new CosmosQueryRequestOptions();
