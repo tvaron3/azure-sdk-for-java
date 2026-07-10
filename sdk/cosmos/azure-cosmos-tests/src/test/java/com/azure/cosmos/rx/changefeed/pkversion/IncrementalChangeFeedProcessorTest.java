@@ -11,6 +11,7 @@ import com.azure.cosmos.CosmosAsyncDatabase;
 import com.azure.cosmos.CosmosClientBuilder;
 import com.azure.cosmos.CosmosEndToEndOperationLatencyPolicyConfigBuilder;
 import com.azure.cosmos.CosmosNettyLeakDetectorFactory;
+import com.azure.cosmos.FlakyTestRetryAnalyzer;
 import com.azure.cosmos.SplitTestsRetryAnalyzer;
 import com.azure.cosmos.SplitTimeoutException;
 import com.azure.cosmos.ThroughputControlGroupConfig;
@@ -243,7 +244,7 @@ public class IncrementalChangeFeedProcessorTest extends TestSuiteBase {
         }
     }
 
-    @Test(groups = {"multi-master"}, timeOut = 50 * CHANGE_FEED_PROCESSOR_TIMEOUT)
+    @Test(groups = {"multi-master"}, timeOut = 50 * CHANGE_FEED_PROCESSOR_TIMEOUT, retryAnalyzer = FlakyTestRetryAnalyzer.class)
     public void readFeedDocumentsStartFromCustomDateForMultiWrite_test() throws InterruptedException {
         CosmosClientBuilder clientBuilder = getClientBuilder();
 

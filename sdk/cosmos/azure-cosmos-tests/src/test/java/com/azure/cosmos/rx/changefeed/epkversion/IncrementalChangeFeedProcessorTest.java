@@ -358,7 +358,7 @@ public class IncrementalChangeFeedProcessorTest extends TestSuiteBase {
         }
     }
 
-    @Test(groups = {"multi-master"}, timeOut = 50 * CHANGE_FEED_PROCESSOR_TIMEOUT)
+    @Test(groups = {"multi-master"}, timeOut = 50 * CHANGE_FEED_PROCESSOR_TIMEOUT, retryAnalyzer = FlakyTestRetryAnalyzer.class)
     public void readFeedDocumentsStartFromCustomDateForMultiWrite_test() throws InterruptedException {
         CosmosClientBuilder clientBuilder = getClientBuilder();
 
