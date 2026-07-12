@@ -72,7 +72,7 @@ public class ReadFeedDatabasesTest extends TestSuiteBase {
         return client.createDatabase(db, new CosmosDatabaseRequestOptions()).block().getProperties();
     }
 
-    @AfterClass(groups = { "query" }, timeOut = SHUTDOWN_TIMEOUT, alwaysRun = true)
+    @AfterClass(groups = { "query" }, timeOut = 5 * SHUTDOWN_TIMEOUT, alwaysRun = true)
     public void afterClass() {
         for (int i = 0; i < createdDatabases.size(); i ++) {
             safeDeleteDatabase(client.getDatabase(createdDatabases.get(i).getId()));
