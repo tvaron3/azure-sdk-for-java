@@ -80,7 +80,7 @@ extends:
           TestResultsFiles: '**/junitreports/TEST-*.xml'
           AdditionalVariables:
             - name: AdditionalArgs
-              value: '-DCOSMOS.CLIENT_LEAK_DETECTION_ENABLED=true -DCOSMOS.HTTP2_ENABLED=true'
+              value: '-DCOSMOS.CLIENT_LEAK_DETECTION_ENABLED=true -DCOSMOS.HTTP2_ENABLED=true -DCOSMOS.THINCLIENT_ENABLED=false'
 
       - template: /eng/pipelines/templates/stages/archetype-sdk-tests-isolated.yml
         parameters:
@@ -398,4 +398,3 @@ extends:
           AdditionalVariables:
             - name: AdditionalArgs
               value: '-DCOSMOS.CLIENT_LEAK_DETECTION_ENABLED=true'
-

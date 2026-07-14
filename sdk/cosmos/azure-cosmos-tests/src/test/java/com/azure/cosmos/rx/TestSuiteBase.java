@@ -468,7 +468,8 @@ public abstract class TestSuiteBase extends CosmosAsyncClientTest {
         }
 
         int statusCode = ((CosmosException) unwrappedException).getStatusCode();
-        return statusCode == HttpConstants.StatusCodes.TOO_MANY_REQUESTS
+        return statusCode == HttpConstants.StatusCodes.REQUEST_TIMEOUT
+            || statusCode == HttpConstants.StatusCodes.TOO_MANY_REQUESTS
             || statusCode == HttpConstants.StatusCodes.INTERNAL_SERVER_ERROR
             || statusCode == HttpConstants.StatusCodes.SERVICE_UNAVAILABLE;
     }

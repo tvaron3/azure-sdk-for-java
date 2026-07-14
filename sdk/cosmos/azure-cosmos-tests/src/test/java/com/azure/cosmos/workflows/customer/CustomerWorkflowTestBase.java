@@ -21,7 +21,8 @@ import com.azure.cosmos.implementation.RxDocumentClientImpl;
 import com.azure.cosmos.implementation.directconnectivity.ReflectionUtils;
 import com.azure.cosmos.models.CosmosItemIdentity;
 import com.azure.cosmos.models.CosmosItemRequestOptions;
-import com.azure.cosmos.models.ThroughputProperties;
+import com.azure.cosmos.models.CosmosContainerProperties;
+import com.azure.cosmos.models.CosmosContainerRequestOptions;
 import com.azure.cosmos.rx.TestSuiteBase;
 import com.azure.cosmos.test.faultinjection.CosmosFaultInjectionHelper;
 import com.azure.cosmos.test.faultinjection.FaultInjectionCondition;
@@ -177,11 +178,8 @@ public abstract class CustomerWorkflowTestBase extends TestSuiteBase {
         CosmosAsyncDatabase database = getSharedCosmosDatabase(this.client);
         String containerId = prefix + "-" + UUID.randomUUID();
 
-        database
-            .createContainerIfNotExists(containerId, partitionKeyPath, ThroughputProperties.createManualThroughput(400))
-            .block();
-
-        return database.getContainer(containerId);
+        CosmosContainerProperties properties = new CosmosContainerProperties(containerId, partitionKeyPath);
+        return createCollection(database, properties, new CosmosContainerRequestOptions(), 400);
     }
 
     protected static void deleteTemporaryContainer(CosmosAsyncContainer container) {

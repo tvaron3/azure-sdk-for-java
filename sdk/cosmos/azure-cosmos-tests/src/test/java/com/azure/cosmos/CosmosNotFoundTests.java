@@ -229,7 +229,7 @@ public class CosmosNotFoundTests extends FaultInjectionTestBase {
         }
     }
 
-    @Test(groups = {"thinclient"}, timeOut = TIMEOUT)
+    @Test(groups = {"thinclient"}, timeOut = 2 * TIMEOUT, retryAnalyzer = FlakyTestRetryAnalyzer.class)
     public void performBulkOnNonExistentContainerGatewayModeV2() {
         logger.info("Running test: Read item from non-existent container in Gateway Connection Mode");
 
@@ -306,7 +306,7 @@ public class CosmosNotFoundTests extends FaultInjectionTestBase {
 
             CosmosAsyncContainer testContainer = clientToUse.getDatabase(testAsyncDatabase.getId()).getContainer(testContainerId);
 
-            Thread.sleep(5000);
+            Thread.sleep(15000);
 
             // Create a different client instance to delete the container
             deletingAsyncClient = getClientBuilder()

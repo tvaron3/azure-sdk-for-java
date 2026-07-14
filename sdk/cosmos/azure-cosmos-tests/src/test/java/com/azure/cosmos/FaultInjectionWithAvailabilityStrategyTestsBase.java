@@ -5082,7 +5082,8 @@ public abstract class FaultInjectionWithAvailabilityStrategyTestsBase extends Te
     private CosmosAsyncContainer createTestContainer(CosmosAsyncClient clientWithPreferredRegions, String dbId) {
         String containerId = UUID.randomUUID().toString();
 
-        clientWithPreferredRegions.createDatabaseIfNotExists(dbId).block();
+        executeControlPlaneWithRetry(
+            () -> clientWithPreferredRegions.createDatabaseIfNotExists(dbId).block());
         CosmosAsyncDatabase databaseWithSeveralWriteableRegions = clientWithPreferredRegions.getDatabase(dbId);
 
         // setup db and container and pass their ids accordingly

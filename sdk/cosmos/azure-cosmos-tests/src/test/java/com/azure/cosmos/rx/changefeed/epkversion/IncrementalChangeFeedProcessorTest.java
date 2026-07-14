@@ -2145,11 +2145,13 @@ public class IncrementalChangeFeedProcessorTest extends TestSuiteBase {
         }
     }
 
+    private static final Duration CHANGE_FEED_PROCESSOR_LIFECYCLE_TIMEOUT = Duration.ofSeconds(60);
+
     private void startChangeFeedProcessor(ChangeFeedProcessor changeFeedProcessor) {
         changeFeedProcessor
             .start()
             .subscribeOn(Schedulers.boundedElastic())
-            .timeout(Duration.ofMillis(2 * CHANGE_FEED_PROCESSOR_TIMEOUT))
+            .timeout(CHANGE_FEED_PROCESSOR_LIFECYCLE_TIMEOUT)
             .onErrorResume(throwable -> {
                 logger.error("Change feed processor did not start in the expected time", throwable);
                 return Mono.error(throwable);
@@ -2161,7 +2163,7 @@ public class IncrementalChangeFeedProcessorTest extends TestSuiteBase {
         if (changeFeedProcessor != null && changeFeedProcessor.isStarted()) {
             changeFeedProcessor
                 .stop()
-                .timeout(Duration.ofMinutes(2 * CHANGE_FEED_PROCESSOR_TIMEOUT))
+                .timeout(CHANGE_FEED_PROCESSOR_LIFECYCLE_TIMEOUT)
                 .onErrorResume(throwable -> {
                     logger.warn("Stop changeFeedProcessor failed", throwable);
                     return Mono.empty();
