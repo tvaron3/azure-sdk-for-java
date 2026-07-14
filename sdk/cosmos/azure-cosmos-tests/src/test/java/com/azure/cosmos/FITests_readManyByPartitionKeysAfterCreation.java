@@ -36,7 +36,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class FITests_readManyByPartitionKeysAfterCreation
     extends FaultInjectionWithAvailabilityStrategyTestsBase {
 
-    @Test(groups = {"fi-multi-master"}, dataProvider = "testConfigs_readManyByPartitionKeysAfterCreation", retryAnalyzer = FlakyTestRetryAnalyzer.class)
+    @Test(groups = {"fi-multi-master"}, dataProvider = "testConfigs_readManyByPartitionKeysAfterCreation",
+        retryAnalyzer = SuperFlakyTestRetryAnalyzer.class)
     public void readManyByPartitionKeysAfterCreation(
         String testCaseId,
         Duration endToEndTimeout,

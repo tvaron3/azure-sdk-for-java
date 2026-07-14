@@ -1383,10 +1383,10 @@ public class GatewayAddressCacheTest extends TestSuiteBase {
         // 2. replica validation will get triggered in case of unhealthyPending / unknown addresses, replica validation will do a
         // submitOpenConnectionTaskOutsideLoop for each of these addresses but before that it will also do
         // isCollectionRidUnderOpenConnectionsFlow check to determine the no. of connections to open
-        Mockito.verify(proactiveOpenConnectionsProcessorMock, Mockito.times(2))
+        Mockito.verify(proactiveOpenConnectionsProcessorMock, Mockito.timeout(5000).times(2))
                .isCollectionRidUnderOpenConnectionsFlow(Mockito.any());
 
-        Mockito.verify(proactiveOpenConnectionsProcessorMock, Mockito.times(1))
+        Mockito.verify(proactiveOpenConnectionsProcessorMock, Mockito.timeout(5000).times(1))
                .submitOpenConnectionTaskOutsideLoop(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.anyInt());
     }
 

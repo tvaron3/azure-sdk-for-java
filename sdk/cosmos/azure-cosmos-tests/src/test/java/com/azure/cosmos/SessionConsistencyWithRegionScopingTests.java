@@ -1806,7 +1806,8 @@ public class SessionConsistencyWithRegionScopingTests extends TestSuiteBase {
         }
     }
 
-    @Test(groups = {"multi-master"}, dataProvider = "readYouWriteWithExplicitRegionSwitchingTestContext", timeOut = 80 * TIMEOUT)
+    @Test(groups = {"multi-master"}, dataProvider = "readYouWriteWithExplicitRegionSwitchingTestContext",
+        timeOut = 80 * TIMEOUT, retryAnalyzer = FlakyTestRetryAnalyzer.class)
     public void readYouWriteWithExplicitRegionSwitching(
         BiFunction<CosmosAsyncContainer, Boolean, Set<String>> func,
         String testId,

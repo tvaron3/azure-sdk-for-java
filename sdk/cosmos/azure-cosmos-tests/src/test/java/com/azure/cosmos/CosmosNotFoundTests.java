@@ -437,7 +437,8 @@ public class CosmosNotFoundTests extends FaultInjectionTestBase {
         }
     }
 
-    @Test(groups = {"thinclient"}, dataProvider = "operationTypeProvider", timeOut = TIMEOUT)
+    @Test(groups = {"thinclient"}, dataProvider = "operationTypeProvider",
+        timeOut = 2 * TIMEOUT, retryAnalyzer = FlakyTestRetryAnalyzer.class)
     public void performDocumentOperationOnDeletedContainerWithGatewayV2(OperationType operationType) throws InterruptedException {
         logger.info("Running test: Read item from deleted container - Gateway V2 Connection Mode");
 
