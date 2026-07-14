@@ -163,6 +163,10 @@ public abstract class TestSuiteBase extends CosmosAsyncClientTest {
 
     private static final int TRANSIENT_CLEANUP_MAX_RETRY_ATTEMPTS = 30;
 
+    private static final Duration TRANSIENT_CREATE_RETRY_DELAY = Duration.ofSeconds(3);
+
+    private static final int TRANSIENT_CREATE_MAX_RETRY_ATTEMPTS = 20;
+
     private static final Duration STORED_PROCEDURE_QUERY_RETRY_DELAY = Duration.ofSeconds(1);
 
     private static final int STORED_PROCEDURE_QUERY_ATTEMPT_TIMEOUT = 5_000;
@@ -174,9 +178,10 @@ public abstract class TestSuiteBase extends CosmosAsyncClientTest {
     private static final Duration FEED_RANGE_WARMUP_ATTEMPT_TIMEOUT = Duration.ofSeconds(30);
 
     private static boolean isTransientCreateFailure(Throwable t) {
-        if (t instanceof CosmosException) {
-            int statusCode = ((CosmosException) t).getStatusCode();
-            return statusCode == 408 || statusCode == 429;
+        CosmosException cosmosException = getCosmosException(t);
+        if (cosmosException != null) {
+            int statusCode = cosmosException.getStatusCode();
+            return statusCode == 408 || statusCode == 429 || statusCode == 503;
         }
         return false;
     }
@@ -987,20 +992,19 @@ public abstract class TestSuiteBase extends CosmosAsyncClientTest {
         CosmosContainerRequestOptions options,
         int throughput) {
 
-        try {
-            executeControlPlaneWithRetry(() ->
-                database.createContainer(
-                    cosmosContainerProperties,
-                    ThroughputProperties.createManualThroughput(throughput),
-                    options).block());
-        } catch (RuntimeException e) {
-            if (!isConflictException(e)) {
-                throw e;
-            }
-            logger.info(
-                "Container {} already exists (409 Conflict), treating as success",
-                cosmosContainerProperties.getId());
-        }
+        database.createContainer(
+                cosmosContainerProperties,
+                ThroughputProperties.createManualThroughput(throughput),
+                options)
+            .retryWhen(Retry.fixedDelay(TRANSIENT_CREATE_MAX_RETRY_ATTEMPTS, TRANSIENT_CREATE_RETRY_DELAY)
+                .filter(TestSuiteBase::isTransientCreateFailure))
+            .onErrorResume(e -> isConflictException(e), e -> {
+                logger.info(
+                    "Container {} already exists (409 Conflict), treating as success",
+                    cosmosContainerProperties.getId());
+                return Mono.empty();
+            })
+            .block();
     }
 
     protected static void waitForCollectionToBeAvailableToRead(CosmosAsyncContainer container, CosmosAsyncClient probeClient) {
@@ -1326,17 +1330,16 @@ public abstract class TestSuiteBase extends CosmosAsyncClientTest {
 
     public static CosmosAsyncContainer createCollection(CosmosAsyncDatabase database, CosmosContainerProperties cosmosContainerProperties,
                                                         CosmosContainerRequestOptions options, CosmosAsyncClient probeClient) {
-        try {
-            executeControlPlaneWithRetry(() ->
-                database.createContainer(cosmosContainerProperties, options).block());
-        } catch (RuntimeException e) {
-            if (!isConflictException(e)) {
-                throw e;
-            }
-            logger.info(
-                "Container {} already exists (409 Conflict), treating as success",
-                cosmosContainerProperties.getId());
-        }
+        database.createContainer(cosmosContainerProperties, options)
+            .retryWhen(Retry.fixedDelay(TRANSIENT_CREATE_MAX_RETRY_ATTEMPTS, TRANSIENT_CREATE_RETRY_DELAY)
+                .filter(TestSuiteBase::isTransientCreateFailure))
+            .onErrorResume(e -> isConflictException(e), e -> {
+                logger.info(
+                    "Container {} already exists (409 Conflict), treating as success",
+                    cosmosContainerProperties.getId());
+                return Mono.empty();
+            })
+            .block();
         waitForCollectionToBeAvailableToRead(database.getContainer(cosmosContainerProperties.getId()), probeClient);
         getFeedRangesWithRetry(
             getContainerForReadinessProbe(database, cosmosContainerProperties.getId(), probeClient),
