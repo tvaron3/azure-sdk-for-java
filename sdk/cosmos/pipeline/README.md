@@ -37,12 +37,14 @@ All Cosmos live-test matrix legs run on **linux** agents, so the parser is bash 
 
 `single-session`, `single-session-pmerge`, `single-strong`, `single-session-split`,
 `single-strong-split`, `multiregion-strong`, `multimaster-multiregion-session`,
-`multimaster-multiregion-session-split`, `multiregion-tc-session`, `gsi-single-session`,
-`kafka-session`.
+`multimaster-multiregion-session-fi`, `multimaster-multiregion-session-split`,
+`multiregion-tc-session`, `gsi-single-session`, `kafka-session`.
 
 The `*-split` accounts are dedicated to the partition-split-forcing profiles
 (`-Pcfp-split`, `-Psplit`), which raise container throughput to force splits. Isolating
 them keeps that split churn off the shared query/fast/direct accounts.
+The `*-fi` account isolates fault-injection profiles from normal traffic so injected
+availability failures are not compounded by unrelated shared-account load.
 
 ## Wiring a stage (tests.yml / kafka.yml)
 

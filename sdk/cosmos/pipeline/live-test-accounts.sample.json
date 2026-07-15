@@ -76,6 +76,20 @@
       "multiWrite": true,
       "secondaryKey": "REPLACE_SECONDARY_KEY"
     },
+    "multimaster-multiregion-session-fi": {
+      "endpoint": "https://REPLACE-multimaster-multiregion-session-fi.documents.azure.com:443/",
+      "key": "REPLACE_KEY",
+      "regions": [
+        "Central US",
+        "East US 2"
+      ],
+      "preferredLocations": [
+        "East US 2"
+      ],
+      "consistency": "Session",
+      "multiWrite": true,
+      "secondaryKey": "REPLACE_SECONDARY_KEY"
+    },
     "multimaster-multiregion-session-split": {
       "endpoint": "https://REPLACE-multimaster-multiregion-session-split.documents.azure.com:443/",
       "key": "REPLACE_KEY",

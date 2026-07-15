@@ -186,7 +186,7 @@ extends:
             # with fallback to Gateway V1, rather than a hard opt-in. HTTP2_ENABLED stays true because
             # thin-client routing requires HTTP/2 to be effectively enabled.
             - name: AdditionalArgs
-              value: '-DCOSMOS.CLIENT_LEAK_DETECTION_ENABLED=true -DACCOUNT_HOST=$(thinclient-test-endpoint) -DACCOUNT_KEY=$(thinclient-test-key) -DCOSMOS.HTTP2_ENABLED=true'
+              value: '-DCOSMOS.CLIENT_LEAK_DETECTION_ENABLED=true -DACCOUNT_HOST=$(thinclient-test-endpoint) -DACCOUNT_KEY=$(thinclient-test-key) -DCOSMOS.HTTP2_ENABLED=true -DCOSMOS.COLLECTION_READINESS_MAX_WAIT_SECONDS=300'
 
       - template: /eng/pipelines/templates/stages/archetype-sdk-tests-isolated.yml
         parameters:

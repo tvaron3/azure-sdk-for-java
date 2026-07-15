@@ -145,13 +145,14 @@ public abstract class TestSuiteBase extends CosmosAsyncClientTest {
     protected static final int SETUP_TIMEOUT = 300_000;
     protected static final int SHUTDOWN_TIMEOUT = 24000;
 
-    private static final int SHARED_SUITE_SETUP_TIMEOUT = 600_000;
+    private static final int SHARED_SUITE_SETUP_TIMEOUT = 2_400_000;
 
     protected static final int SUITE_SHUTDOWN_TIMEOUT = 60000;
 
     protected static final int WAIT_REPLICA_CATCH_UP_IN_MILLIS = 4000;
 
-    private static final Duration COLLECTION_READINESS_MAX_WAIT = Duration.ofMinutes(2);
+    private static final Duration COLLECTION_READINESS_MAX_WAIT = Duration.ofSeconds(
+        Long.getLong("COSMOS.COLLECTION_READINESS_MAX_WAIT_SECONDS", Duration.ofMinutes(2).getSeconds()));
 
     private static final Duration COLLECTION_READINESS_PROBE_TIMEOUT = Duration.ofSeconds(10);
 
@@ -173,7 +174,7 @@ public abstract class TestSuiteBase extends CosmosAsyncClientTest {
 
     private static final Duration STORED_PROCEDURE_QUERY_MAX_RETRY_DURATION = Duration.ofSeconds(30);
 
-    private static final Duration FEED_RANGE_WARMUP_MAX_WAIT = COLLECTION_READINESS_MAX_WAIT;
+    private static final Duration FEED_RANGE_WARMUP_MAX_WAIT = Duration.ofMinutes(2);
 
     private static final Duration FEED_RANGE_WARMUP_ATTEMPT_TIMEOUT = Duration.ofSeconds(30);
 

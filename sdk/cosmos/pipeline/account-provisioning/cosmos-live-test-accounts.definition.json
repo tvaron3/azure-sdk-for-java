@@ -89,6 +89,21 @@
       ]
     },
     {
+      "name": "multimaster-multiregion-session-fi",
+      "defaultConsistencyLevel": "Session",
+      "enableMultipleWriteLocations": true,
+      "enableMultipleRegions": true,
+      "enablePartitionMerge": false,
+      "thinClient": false,
+      "preferredLocations": [
+        "East US 2"
+      ],
+      "includeSecondaryKey": true,
+      "capabilities": [
+        "EnableNoSQLVectorSearch"
+      ]
+    },
+    {
       "name": "multimaster-multiregion-session-split",
       "defaultConsistencyLevel": "Session",
       "enableMultipleWriteLocations": true,

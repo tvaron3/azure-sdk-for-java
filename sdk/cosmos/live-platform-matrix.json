@@ -32,6 +32,7 @@
     "single-strong-split": "",
     "multiregion-strong": "",
     "multimaster-multiregion-session": "",
+    "multimaster-multiregion-session-fi": "",
     "multimaster-multiregion-session-split": ""
   },
   "include": [
@@ -225,7 +226,7 @@
           "Pool": "env:LINUXPOOL"
         }
       },
-      "AccountSelector": "multimaster-multiregion-session"
+      "AccountSelector": "multimaster-multiregion-session-fi"
     },
     {
       "DESIRED_CONSISTENCIES": "[\"Session\"]",
@@ -269,7 +270,7 @@
           "Pool": "env:LINUXPOOL"
         }
       },
-      "AccountSelector": "multimaster-multiregion-session"
+      "AccountSelector": "multimaster-multiregion-session-fi"
     },
     {
       "DESIRED_CONSISTENCIES": "[\"Session\"]",
