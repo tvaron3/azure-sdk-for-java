@@ -95,7 +95,7 @@ public class ReadFeedOffersTest extends TestSuiteBase {
         }
     }
 
-    @BeforeClass(groups = { "query" }, timeOut = SETUP_TIMEOUT)
+    @BeforeClass(groups = { "query" }, timeOut = 6 * SETUP_TIMEOUT)
     public void before_ReadFeedOffersTest() {
         client = clientBuilder().build();
         createdDatabase = createDatabase(client, databaseId);

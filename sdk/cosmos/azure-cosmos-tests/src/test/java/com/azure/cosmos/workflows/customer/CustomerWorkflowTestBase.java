@@ -179,7 +179,28 @@ public abstract class CustomerWorkflowTestBase extends TestSuiteBase {
         String containerId = prefix + "-" + UUID.randomUUID();
 
         CosmosContainerProperties properties = new CosmosContainerProperties(containerId, partitionKeyPath);
-        return createCollection(database, properties, new CosmosContainerRequestOptions(), 400);
+        CosmosAsyncContainer container = database.getContainer(containerId);
+        boolean createdAndValidated = false;
+        try {
+            CosmosAsyncContainer result =
+                createCollection(database, properties, new CosmosContainerRequestOptions(), 400);
+            createdAndValidated = true;
+            return result;
+        } finally {
+            if (!createdAndValidated) {
+                boolean interrupted = Thread.interrupted();
+                try {
+                    container.delete().timeout(Duration.ofSeconds(20)).block();
+                } catch (Throwable cleanupError) {
+                    logger.warn("Failed to clean up temporary container {} after setup failure.",
+                        containerId, cleanupError);
+                } finally {
+                    if (interrupted) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            }
+        }
     }
 
     protected static void deleteTemporaryContainer(CosmosAsyncContainer container) {
