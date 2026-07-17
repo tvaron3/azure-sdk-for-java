@@ -474,13 +474,19 @@ public class CosmosItemTest extends TestSuiteBase {
             logger.info("Cosmos Diagnostics: {}", feedResponse.getCosmosDiagnostics().getDiagnosticsContext().toJson());
         }
         catch (CosmosException e) {
-            // With Strong consistency and 2 out of 3 secondaries unreachable,
-            // read quorum cannot be met - 503 is the expected/correct behavior.
+            // With Strong or Bounded Staleness consistency and 2 out of 3 secondaries
+            // unreachable, a quorum read can legitimately fail with 503 when no valid store
+            // response is available (or the read quorum cannot be met).
             // TODO: The SDK should fallback to read from primary when quorum cannot be met
             //  with secondaries. Once primary fallback is implemented, this catch may no longer
             //  be needed. See PR #48064 review discussion for details.
-            if (effectiveConsistencyLevel == ConsistencyLevel.STRONG && e.getStatusCode() == 503) {
-                logger.info("Expected 503 for Strong consistency with 2 unreachable secondaries. SubStatus: {}",
+            boolean quorumConsistency = effectiveConsistencyLevel == ConsistencyLevel.STRONG
+                || effectiveConsistencyLevel == ConsistencyLevel.BOUNDED_STALENESS;
+            boolean expectedQuorumFailure = e.getStatusCode() == HttpConstants.StatusCodes.SERVICE_UNAVAILABLE
+                && (e.getSubStatusCode() == HttpConstants.SubStatusCodes.READ_QUORUM_NOT_MET
+                    || e.getSubStatusCode() == HttpConstants.SubStatusCodes.NO_VALID_STORE_RESPONSE);
+            if (quorumConsistency && expectedQuorumFailure) {
+                logger.info("Expected 503 for quorum consistency with 2 unreachable secondaries. SubStatus: {}",
                     e.getSubStatusCode());
             } else {
                 throw e;

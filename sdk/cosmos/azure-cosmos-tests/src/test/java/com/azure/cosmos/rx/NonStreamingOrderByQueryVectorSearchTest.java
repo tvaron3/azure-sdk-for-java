@@ -52,7 +52,9 @@ import com.azure.cosmos.SuperFlakyTestRetryAnalyzer;
 
 public class NonStreamingOrderByQueryVectorSearchTest {
     protected static final int TIMEOUT = 30000;
-    protected static final int SETUP_TIMEOUT = 60000; // Increased from 20s to 60s to handle network delays in CI
+    // Setup creates a database plus three indexed containers sequentially; each create can
+    // consume the bounded create/readiness/feed-range retry budget on a loaded live account.
+    protected static final int SETUP_TIMEOUT = 1_200_000;
     protected static final int SHUTDOWN_TIMEOUT = 20000;
 
     protected static Logger logger = LoggerFactory.getLogger(NonStreamingOrderByQueryVectorSearchTest.class.getSimpleName());
