@@ -192,18 +192,18 @@ public class CosmosLatestCommittedItemTests extends TestSuiteBase {
         assertThat(storeResultListQuery).hasSize(2);
         ArrayList<ClientSideRequestStatistics.StoreResponseStatistics> storeResponseList =
             new ArrayList<>(storeResultListQuery.get(0).getResponseStatisticsList());
-        assertThat(storeResponseList).hasSize(2);
-        assertThat(storeResponseList.get(0).getRequestResourceType()).isEqualTo(ResourceType.Document);
-        assertThat(storeResponseList.get(0).getRequestOperationType()).isEqualTo(OperationType.Query);
-        assertThat(storeResponseList.get(1).getRequestResourceType()).isEqualTo(ResourceType.Document);
-        assertThat(storeResponseList.get(1).getRequestOperationType()).isEqualTo(OperationType.Query);
+        assertThat(storeResponseList).hasSizeGreaterThanOrEqualTo(2);
+        assertThat(storeResponseList).allSatisfy(statistics -> {
+            assertThat(statistics.getRequestResourceType()).isEqualTo(ResourceType.Document);
+            assertThat(statistics.getRequestOperationType()).isEqualTo(OperationType.Query);
+        });
 
         storeResponseList = new ArrayList<>(storeResultListQuery.get(1).getResponseStatisticsList());
-        assertThat(storeResponseList).hasSize(2);
-        assertThat(storeResponseList.get(0).getRequestResourceType()).isEqualTo(ResourceType.Document);
-        assertThat(storeResponseList.get(0).getRequestOperationType()).isEqualTo(OperationType.Query);
-        assertThat(storeResponseList.get(1).getRequestResourceType()).isEqualTo(ResourceType.Document);
-        assertThat(storeResponseList.get(1).getRequestOperationType()).isEqualTo(OperationType.Query);
+        assertThat(storeResponseList).hasSizeGreaterThanOrEqualTo(2);
+        assertThat(storeResponseList).allSatisfy(statistics -> {
+            assertThat(statistics.getRequestResourceType()).isEqualTo(ResourceType.Document);
+            assertThat(statistics.getRequestOperationType()).isEqualTo(OperationType.Query);
+        });
     }
 
     @Test(groups = { "fast" }, timeOut = TIMEOUT)

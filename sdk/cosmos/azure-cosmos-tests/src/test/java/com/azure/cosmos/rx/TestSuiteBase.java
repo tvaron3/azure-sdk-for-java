@@ -940,7 +940,13 @@ public abstract class TestSuiteBase extends CosmosAsyncClientTest {
 
     public static CosmosAsyncContainer createCollection(CosmosAsyncDatabase database, CosmosContainerProperties cosmosContainerProperties,
                                                         CosmosContainerRequestOptions options, int throughput) {
-        return createCollection(database, cosmosContainerProperties, options, throughput, /* probeClient */ null);
+        return createCollection(
+            database,
+            cosmosContainerProperties,
+            options,
+            throughput,
+            /* probeClient */ null,
+            COLLECTION_READINESS_MAX_WAIT);
     }
 
     /**
@@ -952,6 +958,44 @@ public abstract class TestSuiteBase extends CosmosAsyncClientTest {
      */
     public static CosmosAsyncContainer createCollection(CosmosAsyncDatabase database, CosmosContainerProperties cosmosContainerProperties,
                                                         CosmosContainerRequestOptions options, int throughput, CosmosAsyncClient probeClient) {
+        return createCollection(
+            database,
+            cosmosContainerProperties,
+            options,
+            throughput,
+            probeClient,
+            COLLECTION_READINESS_MAX_WAIT);
+    }
+
+    protected static CosmosAsyncContainer createCollectionWithReadinessMaxWait(
+        CosmosAsyncDatabase database,
+        CosmosContainerProperties cosmosContainerProperties,
+        CosmosContainerRequestOptions options,
+        int throughput,
+        Duration collectionReadinessMaxWait) {
+
+        Objects.requireNonNull(collectionReadinessMaxWait, "collectionReadinessMaxWait");
+        if (collectionReadinessMaxWait.isZero() || collectionReadinessMaxWait.isNegative()) {
+            throw new IllegalArgumentException("collectionReadinessMaxWait must be positive");
+        }
+
+        return createCollection(
+            database,
+            cosmosContainerProperties,
+            options,
+            throughput,
+            /* probeClient */ null,
+            collectionReadinessMaxWait);
+    }
+
+    private static CosmosAsyncContainer createCollection(
+        CosmosAsyncDatabase database,
+        CosmosContainerProperties cosmosContainerProperties,
+        CosmosContainerRequestOptions options,
+        int throughput,
+        CosmosAsyncClient probeClient,
+        Duration collectionReadinessMaxWait) {
+
         Runnable ensureContainerExists = () -> createCollectionIfNotExists(
             database,
             cosmosContainerProperties,
@@ -967,7 +1011,8 @@ public abstract class TestSuiteBase extends CosmosAsyncClientTest {
         waitForCollectionToBeAvailableToRead(
             database.getContainer(cosmosContainerProperties.getId()),
             probeClient,
-            ensureContainerExists);
+            ensureContainerExists,
+            collectionReadinessMaxWait);
         getFeedRangesWithRetry(
             getContainerForReadinessProbe(database, cosmosContainerProperties.getId(), probeClient),
             "post-create feed range readiness for container " + cosmosContainerProperties.getId());
@@ -1049,6 +1094,19 @@ public abstract class TestSuiteBase extends CosmosAsyncClientTest {
         CosmosAsyncClient probeClient,
         Runnable ensureContainerExistsOnReadFailure) {
 
+        waitForCollectionToBeAvailableToRead(
+            container,
+            probeClient,
+            ensureContainerExistsOnReadFailure,
+            COLLECTION_READINESS_MAX_WAIT);
+    }
+
+    private static void waitForCollectionToBeAvailableToRead(
+        CosmosAsyncContainer container,
+        CosmosAsyncClient probeClient,
+        Runnable ensureContainerExistsOnReadFailure,
+        Duration maxWait) {
+
         // Creating a container is asynchronous - especially on multi-region accounts the new collection can
         // take time to become readable in a routed region. Until then, metadata reads can fail with 404/1013
         // ("Collection is not yet available for read"). Instead of a fixed sleep, verify that the collection is
@@ -1072,7 +1130,6 @@ public abstract class TestSuiteBase extends CosmosAsyncClientTest {
 
         List<String> excludedRegions = getExcludedRegions(client);
 
-        Duration maxWait = COLLECTION_READINESS_MAX_WAIT;
         long deadlineNanos = System.nanoTime() + maxWait.toNanos();
 
         awaitContainerReadableInRegion(

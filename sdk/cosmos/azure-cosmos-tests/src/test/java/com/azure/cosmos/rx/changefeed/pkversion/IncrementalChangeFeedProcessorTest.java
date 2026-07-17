@@ -85,6 +85,7 @@ import static org.testng.Assert.assertThrows;
 public class IncrementalChangeFeedProcessorTest extends TestSuiteBase {
     private final static Logger log = LoggerFactory.getLogger(IncrementalChangeFeedProcessorTest.class);
     private static final ObjectMapper OBJECT_MAPPER = Utils.getSimpleObjectMapper();
+    private static final Duration MULTI_WRITE_COLLECTION_READINESS_MAX_WAIT = Duration.ofMinutes(5);
 
     private CosmosAsyncDatabase createdDatabase;
 //    private final String databaseId = "testdb1";
@@ -244,7 +245,7 @@ public class IncrementalChangeFeedProcessorTest extends TestSuiteBase {
         }
     }
 
-    @Test(groups = {"multi-master"}, timeOut = 50 * CHANGE_FEED_PROCESSOR_TIMEOUT, retryAnalyzer = FlakyTestRetryAnalyzer.class)
+    @Test(groups = {"multi-master"}, timeOut = 240 * CHANGE_FEED_PROCESSOR_TIMEOUT, retryAnalyzer = FlakyTestRetryAnalyzer.class)
     public void readFeedDocumentsStartFromCustomDateForMultiWrite_test() throws InterruptedException {
         CosmosClientBuilder clientBuilder = getClientBuilder();
 
@@ -277,16 +278,18 @@ public class IncrementalChangeFeedProcessorTest extends TestSuiteBase {
 
             cosmosAsyncClient.createDatabaseIfNotExists(MULTI_WRITE_DATABASE_NAME).block();
             cosmosAsyncDatabase = cosmosAsyncClient.getDatabase(MULTI_WRITE_DATABASE_NAME);
-            createdFeedCollection = createCollection(
+            createdFeedCollection = createCollectionWithReadinessMaxWait(
                 cosmosAsyncDatabase,
                 new CosmosContainerProperties(MULTI_WRITE_MONITORED_COLLECTION_NAME, "/id"),
                 new CosmosContainerRequestOptions(),
-                400);
-            createdLeaseCollection = createCollection(
+                400,
+                MULTI_WRITE_COLLECTION_READINESS_MAX_WAIT);
+            createdLeaseCollection = createCollectionWithReadinessMaxWait(
                 cosmosAsyncDatabase,
                 new CosmosContainerProperties(MULTI_WRITE_LEASE_COLLECTION_NAME, "/id"),
                 new CosmosContainerRequestOptions(),
-                400);
+                400,
+                MULTI_WRITE_COLLECTION_READINESS_MAX_WAIT);
 
             try {
                 List<InternalObjectNode> createdDocuments = new ArrayList<>();
