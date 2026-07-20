@@ -1,11 +1,9 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-package com.azure.core.implementation;
+package com.azure.core.credential;
 
-import com.azure.core.credential.AccessToken;
-import com.azure.core.credential.TokenCredential;
-import com.azure.core.credential.TokenRequestContext;
+import com.azure.core.implementation.AccessTokenCacheInfo;
 import com.azure.core.util.logging.ClientLogger;
 import com.azure.core.util.logging.LogLevel;
 import com.azure.core.util.logging.LoggingEventBuilder;
@@ -25,7 +23,57 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 /**
- * A token cache that supports caching a token and refreshing it.
+ * <p>
+ * {@code AccessTokenCache} is a thread-safe token cache that wraps a {@link TokenCredential} and manages proactive
+ * token refresh. It supports both asynchronous and synchronous token retrieval via
+ * {@link #getToken(TokenRequestContext, boolean)} and {@link #getTokenSync(TokenRequestContext, boolean)}.
+ * </p>
+ *
+ * <p>
+ * The cache maintains a single cached {@link AccessToken} per instance and proactively refreshes it before expiry
+ * (by default 5 minutes before the expiry time, or at the {@code refreshAt} time if provided by the credential).
+ * If a refresh fails while a non-expired token is still available, the cached token continues to be returned until
+ * it expires.
+ * </p>
+ *
+ * <p>
+ * When the {@code refreshOnContextChange} flag is {@code true}, the cache compares the incoming
+ * {@link TokenRequestContext} (scopes, tenant ID, claims) against the context used to acquire the current cached
+ * token. A mismatch causes an immediate token refresh regardless of expiry. This is the mechanism used to support
+ * Continuous Access Evaluation (CAE) claims challenges.
+ * </p>
+ *
+ * <p>
+ * <strong>Note:</strong> Each instance caches exactly one {@link AccessToken} associated with one
+ * {@link TokenRequestContext}. Do not share a single {@code AccessTokenCache} instance across calls that require
+ * different scopes or tenants simultaneously, as each new context will evict the previously cached token.
+ * </p>
+ *
+ * <p>
+ * This class is thread-safe. Multiple threads may call {@link #getToken(TokenRequestContext, boolean)} and
+ * {@link #getTokenSync(TokenRequestContext, boolean)} concurrently.
+ * </p>
+ *
+ * <p>
+ * <strong>Sample: Wrapping a TokenCredential with AccessTokenCache</strong>
+ * </p>
+ *
+ * <!-- src_embed com.azure.core.credential.accessTokenCache -->
+ * <pre>
+ * TokenCredential credential = new BasicAuthenticationCredential&#40;&quot;username&quot;, &quot;password&quot;&#41;;
+ * AccessTokenCache tokenCache = new AccessTokenCache&#40;credential&#41;;
+ * TokenRequestContext requestContext = new TokenRequestContext&#40;&#41;.addScopes&#40;&quot;https:&#47;&#47;management.azure.com&#47;.default&quot;&#41;;
+ * &#47;&#47; Async usage
+ * Mono&lt;AccessToken&gt; tokenMono = tokenCache.getToken&#40;requestContext, false&#41;;
+ * &#47;&#47; Sync usage
+ * AccessToken token = tokenCache.getTokenSync&#40;requestContext, false&#41;;
+ * </pre>
+ * <!-- end com.azure.core.credential.accessTokenCache -->
+ *
+ * @see TokenCredential
+ * @see AccessToken
+ * @see TokenRequestContext
+ * @see SimpleTokenCache
  */
 public final class AccessTokenCache {
     // The delay after a refresh to attempt another token refresh
@@ -48,12 +96,12 @@ public final class AccessTokenCache {
     private final Lock lock;
 
     /**
-     * Creates an instance of RefreshableTokenCredential with default scheme "Bearer".
+     * Creates an instance of {@code AccessTokenCache} that wraps the given {@link TokenCredential}.
      *
      * @param tokenCredential the token credential to be used to acquire the token.
      */
     public AccessTokenCache(TokenCredential tokenCredential) {
-        Objects.requireNonNull(tokenCredential, "The token credential cannot be null");
+        Objects.requireNonNull(tokenCredential, "'tokenCredential' cannot be null.");
         this.wip = new AtomicReference<>();
         this.tokenCredential = tokenCredential;
         this.cacheInfo = new AtomicReference<>(new AccessTokenCacheInfo(null, OffsetDateTime.now()));
@@ -70,11 +118,15 @@ public final class AccessTokenCache {
      * Asynchronously get a token from either the cache or replenish the cache with a new token.
      *
      * @param tokenRequestContext The request context for token acquisition.
-     * @param checkToForceFetchToken The flag indicating whether to force fetch a new token or not.
-     * @return The Publisher that emits an AccessToken
+     * @param refreshOnContextChange When {@code true}, compares the incoming {@link TokenRequestContext} against the
+     *     one used to acquire the current cached token. If the scopes, tenant ID, or claims differ, a fresh token is
+     *     fetched immediately regardless of expiry. Pass {@code false} to always use the cached token when it is
+     *     still valid.
+     * @return a {@link Mono} that emits the cached or newly acquired {@link AccessToken}.
+     * @throws IllegalArgumentException if {@code tokenRequestContext} is {@code null}.
      */
-    public Mono<AccessToken> getToken(TokenRequestContext tokenRequestContext, boolean checkToForceFetchToken) {
-        return Mono.defer(retrieveToken(tokenRequestContext, checkToForceFetchToken))
+    public Mono<AccessToken> getToken(TokenRequestContext tokenRequestContext, boolean refreshOnContextChange) {
+        return Mono.defer(retrieveToken(tokenRequestContext, refreshOnContextChange))
             // Keep resubscribing as long as Mono.defer [token acquisition] emits empty().
             .repeatWhenEmpty((Flux<Long> longFlux) -> longFlux
                 .concatMap(ignored -> Flux.just(true).delayElements(Duration.ofMillis(500))));
@@ -84,25 +136,29 @@ public final class AccessTokenCache {
      * Synchronously get a token from either the cache or replenish the cache with a new token.
      *
      * @param tokenRequestContext The request context for token acquisition.
-     * @param checkToForceFetchToken The flag indicating whether to force fetch a new token or not.
-     * @return The Publisher that emits an AccessToken
+     * @param refreshOnContextChange When {@code true}, compares the incoming {@link TokenRequestContext} against the
+     *     one used to acquire the current cached token. If the scopes, tenant ID, or claims differ, a fresh token is
+     *     fetched immediately regardless of expiry. Pass {@code false} to always use the cached token when it is
+     *     still valid.
+     * @return the cached or newly acquired {@link AccessToken}.
+     * @throws IllegalArgumentException if {@code tokenRequestContext} is {@code null}.
      */
-    public AccessToken getTokenSync(TokenRequestContext tokenRequestContext, boolean checkToForceFetchToken) {
+    public AccessToken getTokenSync(TokenRequestContext tokenRequestContext, boolean refreshOnContextChange) {
         lock.lock();
         try {
-            return retrieveTokenSync(tokenRequestContext, checkToForceFetchToken).get();
+            return retrieveTokenSync(tokenRequestContext, refreshOnContextChange).get();
         } finally {
             lock.unlock();
         }
     }
 
     private Supplier<Mono<? extends AccessToken>> retrieveToken(TokenRequestContext tokenRequestContext,
-        boolean checkToForceFetchToken) {
+        boolean refreshOnContextChange) {
         return () -> {
             try {
                 if (tokenRequestContext == null) {
-                    return Mono.error(LOGGER.logExceptionAsError(
-                        new IllegalArgumentException("The token request context input cannot be null.")));
+                    return Mono.error(LOGGER
+                        .logExceptionAsError(new IllegalArgumentException("'tokenRequestContext' cannot be null.")));
                 }
 
                 AccessTokenCacheInfo cache = this.cacheInfo.get();
@@ -115,9 +171,9 @@ public final class AccessTokenCache {
                     Mono<AccessToken> fallback;
 
                     // Check if the incoming token request context is different from the cached one. A different
-                    // token request context, requires to fetch a new token as the cached one won't work for the
+                    // token request context requires fetching a new token as the cached one won't work for the
                     // passed in token request context.
-                    boolean forceRefresh = (checkToForceFetchToken && checkIfForceRefreshRequired(tokenRequestContext))
+                    boolean forceRefresh = (refreshOnContextChange && checkIfForceRefreshRequired(tokenRequestContext))
                         || this.tokenRequestContext == null;
 
                     if (forceRefresh) {
@@ -153,12 +209,12 @@ public final class AccessTokenCache {
                             .flatMap(processTokenRefreshResult(sinksOne, now, fallback))
                             .doOnError(sinksOne::tryEmitError),
                         w -> w.set(null));
-                } else if (cachedToken != null && !cachedToken.isExpired() && !checkToForceFetchToken) {
+                } else if (cachedToken != null && !cachedToken.isExpired() && !refreshOnContextChange) {
                     // another thread might be refreshing the token proactively, but the current token is still valid
                     return Mono.just(cachedToken);
                 } else {
-                    // if a force refresh is possible, then exit and retry.
-                    if (checkToForceFetchToken) {
+                    // if a context-change refresh is pending, exit and retry.
+                    if (refreshOnContextChange) {
                         return Mono.empty();
                     }
                     // another thread is definitely refreshing the expired token
@@ -178,11 +234,10 @@ public final class AccessTokenCache {
     }
 
     private Supplier<AccessToken> retrieveTokenSync(TokenRequestContext tokenRequestContext,
-        boolean checkToForceFetchToken) {
+        boolean refreshOnContextChange) {
         return () -> {
             if (tokenRequestContext == null) {
-                throw LOGGER.logExceptionAsError(
-                    new IllegalArgumentException("The token request context input cannot be null."));
+                throw LOGGER.logExceptionAsError(new IllegalArgumentException("'tokenRequestContext' cannot be null."));
             }
             AccessTokenCacheInfo cache = this.cacheInfo.get();
             AccessToken cachedToken = cache.getCachedAccessToken();
@@ -192,9 +247,9 @@ public final class AccessTokenCache {
             AccessToken fallback;
 
             // Check if the incoming token request context is different from the cached one. A different
-            // token request context, requires to fetch a new token as the cached one won't work for the
+            // token request context requires fetching a new token as the cached one won't work for the
             // passed in token request context.
-            boolean forceRefresh = (checkToForceFetchToken && checkIfForceRefreshRequired(tokenRequestContext))
+            boolean forceRefresh = (refreshOnContextChange && checkIfForceRefreshRequired(tokenRequestContext))
                 || this.tokenRequestContext == null;
 
             if (forceRefresh) {
@@ -245,7 +300,10 @@ public final class AccessTokenCache {
                 if (fallback != null) {
                     return fallback;
                 }
-                throw error;
+                if (error instanceof RuntimeException) {
+                    throw LOGGER.logExceptionAsError((RuntimeException) error);
+                }
+                throw LOGGER.logExceptionAsError(new RuntimeException(error));
             }
         };
     }
