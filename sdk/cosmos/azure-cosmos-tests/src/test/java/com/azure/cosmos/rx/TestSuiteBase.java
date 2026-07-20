@@ -141,6 +141,7 @@ public abstract class TestSuiteBase extends CosmosAsyncClientTest {
         );
 
     protected static final int TIMEOUT = 40000;
+    protected static final int CONTROL_PLANE_TIMEOUT = 3 * TIMEOUT;
     protected static final int FEED_TIMEOUT = 40000;
     protected static final int SETUP_TIMEOUT = 300_000;
     protected static final int SHUTDOWN_TIMEOUT = 24000;
@@ -163,6 +164,8 @@ public abstract class TestSuiteBase extends CosmosAsyncClientTest {
     private static final Duration TRANSIENT_CLEANUP_RETRY_DELAY = Duration.ofSeconds(1);
 
     private static final int TRANSIENT_CLEANUP_MAX_RETRY_ATTEMPTS = 30;
+
+    private static final int TRANSIENT_RESOURCE_DELETE_MAX_RETRY_ATTEMPTS = 5;
 
     private static final Duration TRANSIENT_CREATE_RETRY_DELAY = Duration.ofSeconds(3);
 
@@ -463,6 +466,13 @@ public abstract class TestSuiteBase extends CosmosAsyncClientTest {
     private static <T> Flux<T> retryOnTransientCleanupFailure(Flux<T> responseFlux) {
         return responseFlux.retryWhen(
             Retry.fixedDelay(TRANSIENT_CLEANUP_MAX_RETRY_ATTEMPTS, TRANSIENT_CLEANUP_RETRY_DELAY)
+                .filter(TestSuiteBase::isTransientCleanupFailure)
+                .onRetryExhaustedThrow((retryBackoffSpec, retrySignal) -> retrySignal.failure()));
+    }
+
+    private static <T> Mono<T> retryOnTransientResourceDeleteFailure(Mono<T> responseMono) {
+        return responseMono.retryWhen(
+            Retry.fixedDelay(TRANSIENT_RESOURCE_DELETE_MAX_RETRY_ATTEMPTS, TRANSIENT_CLEANUP_RETRY_DELAY)
                 .filter(TestSuiteBase::isTransientCleanupFailure)
                 .onRetryExhaustedThrow((retryBackoffSpec, retrySignal) -> retrySignal.failure()));
     }
@@ -1870,8 +1880,15 @@ public abstract class TestSuiteBase extends CosmosAsyncClientTest {
     static protected void safeDeleteDatabase(CosmosAsyncDatabase database) {
         if (database != null) {
             try {
-                database.delete().block();
+                retryOnTransientResourceDeleteFailure(database.delete()).block();
             } catch (Exception e) {
+                CosmosException cosmosException = getCosmosException(e);
+                if (cosmosException != null
+                    && cosmosException.getStatusCode() == HttpConstants.StatusCodes.NOTFOUND) {
+                    logger.info("Database {} does not exist anymore.", database.getId());
+                } else {
+                    logger.error("Failed to delete database {}", database.getId(), e);
+                }
             }
         }
     }
@@ -1911,24 +1928,19 @@ public abstract class TestSuiteBase extends CosmosAsyncClientTest {
                 logger.info("attempting to delete container {}.{}....",
                     collection.getDatabase().getId(),
                     collection.getId());
-                collection.delete().block();
+                retryOnTransientResourceDeleteFailure(collection.delete()).block();
                 logger.info("Container {}.{} deletion completed",
                     collection.getDatabase().getId(),
                     collection.getId());
             } catch (Exception e) {
-                boolean shouldLogAsError = true;
-                if (e  instanceof CosmosException) {
-                    CosmosException cosmosException = (CosmosException) e;
-                    if (cosmosException.getStatusCode() == 404) {
-                        shouldLogAsError = false;
-                        logger.info(
-                            "Container {}.{} does not exist anymore.",
-                            collection.getDatabase().getId(),
-                            collection.getId());
-                    }
-                }
-
-                if (shouldLogAsError) {
+                CosmosException cosmosException = getCosmosException(e);
+                if (cosmosException != null
+                    && cosmosException.getStatusCode() == HttpConstants.StatusCodes.NOTFOUND) {
+                    logger.info(
+                        "Container {}.{} does not exist anymore.",
+                        collection.getDatabase().getId(),
+                        collection.getId());
+                } else {
                     logger.error("failed to delete sync container {}.{}",
                         collection.getDatabase().getId(),
                         collection.getId(),
@@ -1939,7 +1951,11 @@ public abstract class TestSuiteBase extends CosmosAsyncClientTest {
                 try {
                     Thread.sleep(100);
                 } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
+                    Thread.currentThread().interrupt();
+                    logger.warn(
+                        "Interrupted while waiting after deleting container {}.{}",
+                        collection.getDatabase().getId(),
+                        collection.getId());
                 }
             }
         }

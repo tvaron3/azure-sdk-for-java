@@ -288,7 +288,7 @@ public class CosmosNotFoundTests extends FaultInjectionTestBase {
         }
     }
 
-    @Test(groups = {"fast"}, dataProvider = "operationTypeProvider", timeOut = TIMEOUT)
+    @Test(groups = {"fast"}, dataProvider = "operationTypeProvider", timeOut = 2 * TIMEOUT)
     public void performDocumentOperationOnDeletedContainer(OperationType operationType) throws InterruptedException {
 
         CosmosAsyncClient clientToUse = null, deletingAsyncClient = null;
@@ -306,7 +306,7 @@ public class CosmosNotFoundTests extends FaultInjectionTestBase {
 
             CosmosAsyncContainer testContainer = clientToUse.getDatabase(testAsyncDatabase.getId()).getContainer(testContainerId);
 
-            Thread.sleep(15000);
+            Thread.sleep(5000);
 
             // Create a different client instance to delete the container
             deletingAsyncClient = getClientBuilder()

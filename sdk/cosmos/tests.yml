@@ -55,7 +55,7 @@ extends:
           PreTestRunSteps:
             - template: /sdk/cosmos/pipeline/resolve-test-account-steps.yml
               parameters:
-                AccountSelector: multimaster-multiregion-session
+                AccountSelector: multimaster-session-http2
           MatrixConfigs:
             - Name: Cosmos_live_test_http2
               Path: sdk/cosmos/live-http2-platform-matrix.json

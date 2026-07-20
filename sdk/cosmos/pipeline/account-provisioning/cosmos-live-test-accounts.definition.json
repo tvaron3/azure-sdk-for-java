@@ -89,6 +89,51 @@
       ]
     },
     {
+      "name": "multimaster-session-control",
+      "defaultConsistencyLevel": "Session",
+      "enableMultipleWriteLocations": true,
+      "enableMultipleRegions": true,
+      "enablePartitionMerge": false,
+      "thinClient": false,
+      "preferredLocations": [
+        "East US 2"
+      ],
+      "includeSecondaryKey": true,
+      "capabilities": [
+        "EnableNoSQLVectorSearch"
+      ]
+    },
+    {
+      "name": "multimaster-session-http2",
+      "defaultConsistencyLevel": "Session",
+      "enableMultipleWriteLocations": true,
+      "enableMultipleRegions": true,
+      "enablePartitionMerge": false,
+      "thinClient": false,
+      "preferredLocations": [
+        "East US 2"
+      ],
+      "includeSecondaryKey": true,
+      "capabilities": [
+        "EnableNoSQLVectorSearch"
+      ]
+    },
+    {
+      "name": "multimaster-session-circuit",
+      "defaultConsistencyLevel": "Session",
+      "enableMultipleWriteLocations": true,
+      "enableMultipleRegions": true,
+      "enablePartitionMerge": false,
+      "thinClient": false,
+      "preferredLocations": [
+        "East US 2"
+      ],
+      "includeSecondaryKey": true,
+      "capabilities": [
+        "EnableNoSQLVectorSearch"
+      ]
+    },
+    {
       "name": "multimaster-multiregion-session-fi",
       "defaultConsistencyLevel": "Session",
       "enableMultipleWriteLocations": true,

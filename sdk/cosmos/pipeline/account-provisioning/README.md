@@ -48,6 +48,17 @@ The emitted JSON conforms to the schema at
 Idempotent: existing accounts are left in place and missing capabilities are added; the
 JSON is regenerated with current endpoints/keys.
 
+The multi-master accounts are separated by contention domain:
+
+| Selector | Workload |
+| --- | --- |
+| `multimaster-multiregion-session` | General query/direct and multi-master tests |
+| `multimaster-session-control` | Control-plane-heavy `fast` tests |
+| `multimaster-session-http2` | HTTP/2 fast/query/circuit-breaker tests |
+| `multimaster-session-circuit` | Flaky and circuit-breaker tests |
+| `multimaster-multiregion-session-fi` | Fault-injection tests |
+| `multimaster-multiregion-session-split` | Partition split/change-feed split tests |
+
 Then **update the Key Vault secret / ADO variable manually** with the contents of
 `accounts.json` (paste the JSON into the `cosmos-live-test-accounts` secret).
 

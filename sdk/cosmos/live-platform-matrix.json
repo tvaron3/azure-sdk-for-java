@@ -32,6 +32,8 @@
     "single-strong-split": "",
     "multiregion-strong": "",
     "multimaster-multiregion-session": "",
+    "multimaster-session-control": "",
+    "multimaster-session-circuit": "",
     "multimaster-multiregion-session-fi": "",
     "multimaster-multiregion-session-split": ""
   },
@@ -284,11 +286,6 @@
       "PROTOCOLS": "[\"Tcp\"]",
       "ProfileFlag": [
         "-Pquery",
-        "-Pflaky-multi-master",
-        "-Pcircuit-breaker-misc-direct",
-        "-Pcircuit-breaker-misc-gateway",
-        "-Pcircuit-breaker-read-all-read-many",
-        "-Pfast",
         "-Pdirect"
       ],
       "Agent": {
@@ -298,6 +295,51 @@
         }
       },
       "AccountSelector": "multimaster-multiregion-session"
+    },
+    {
+      "DESIRED_CONSISTENCIES": "[\"Session\"]",
+      "ACCOUNT_CONSISTENCY": "Session",
+      "ArmConfig": {
+        "MultiMaster_MultiRegion": {
+          "ArmTemplateParameters": "@{ enableMultipleWriteLocations = $true; defaultConsistencyLevel = 'Session'; enableMultipleRegions = $true }",
+          "PREFERRED_LOCATIONS": "[\"East US 2\"]"
+        }
+      },
+      "PROTOCOLS": "[\"Tcp\"]",
+      "ProfileFlag": [
+        "-Pfast"
+      ],
+      "Agent": {
+        "ubuntu": {
+          "OSVmImage": "env:LINUXVMIMAGE",
+          "Pool": "env:LINUXPOOL"
+        }
+      },
+      "AccountSelector": "multimaster-session-control"
+    },
+    {
+      "DESIRED_CONSISTENCIES": "[\"Session\"]",
+      "ACCOUNT_CONSISTENCY": "Session",
+      "ArmConfig": {
+        "MultiMaster_MultiRegion": {
+          "ArmTemplateParameters": "@{ enableMultipleWriteLocations = $true; defaultConsistencyLevel = 'Session'; enableMultipleRegions = $true }",
+          "PREFERRED_LOCATIONS": "[\"East US 2\"]"
+        }
+      },
+      "PROTOCOLS": "[\"Tcp\"]",
+      "ProfileFlag": [
+        "-Pflaky-multi-master",
+        "-Pcircuit-breaker-misc-direct",
+        "-Pcircuit-breaker-misc-gateway",
+        "-Pcircuit-breaker-read-all-read-many"
+      ],
+      "Agent": {
+        "ubuntu": {
+          "OSVmImage": "env:LINUXVMIMAGE",
+          "Pool": "env:LINUXPOOL"
+        }
+      },
+      "AccountSelector": "multimaster-session-circuit"
     },
     {
       "DESIRED_CONSISTENCIES": "[\"Session\"]",
