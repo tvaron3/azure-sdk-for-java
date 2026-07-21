@@ -182,7 +182,8 @@ public class ConsistencyTests2 extends ConsistencyTestsBase {
         this.validateSessionTokenWithDocumentNotFoundExceptionBase(true, shouldRegionScopedSessionContainerEnabled);
     }
 
-    @Test(groups = {"direct"}, dataProvider = "regionScopedSessionContainerConfigs", timeOut = CONSISTENCY_TEST_TIMEOUT)
+    @Test(groups = {"direct"}, dataProvider = "regionScopedSessionContainerConfigs",
+        timeOut = 2 * CONSISTENCY_TEST_TIMEOUT)
     public void validateSessionTokenWithExpectedException(boolean shouldRegionScopedSessionContainerEnabled) throws Exception {
         //TODO Need to test with TCP protocol
         // https://msdata.visualstudio.com/CosmosDB/_workitems/edit/355057

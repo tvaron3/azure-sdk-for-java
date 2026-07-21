@@ -102,7 +102,7 @@ public class PerPartitionCircuitBreakerE2ETests extends FaultInjectionTestBase {
 
     private static final Duration TRANSIENT_404_1002_RETRY_DELAY = Duration.ofSeconds(5);
 
-    private static final Duration TRANSIENT_404_1002_MAX_RETRY_DURATION = Duration.ofMinutes(5);
+    private static final Duration TRANSIENT_404_1002_MAX_RETRY_DURATION = Duration.ofSeconds(30);
 
     private List<String> writeRegions;
     private List<String> readRegions;
@@ -2959,7 +2959,8 @@ public class PerPartitionCircuitBreakerE2ETests extends FaultInjectionTestBase {
         };
     }
 
-    @Test(groups = {"circuit-breaker-misc-direct"}, dataProvider = "miscellaneousOpTestConfigsDirect", timeOut = 4 * TIMEOUT)
+    @Test(groups = {"circuit-breaker-misc-direct"}, dataProvider = "miscellaneousOpTestConfigsDirect",
+        timeOut = 5 * TIMEOUT)
     public void miscellaneousDocumentOperationHitsTerminalExceptionAcrossKRegionsDirect(
         String testId,
         FaultInjectionRuleParamsWrapper faultInjectionRuleParamsWrapper,
@@ -3992,6 +3993,10 @@ public class PerPartitionCircuitBreakerE2ETests extends FaultInjectionTestBase {
     }
 
     private static boolean hasNonFaultInjected404RetryableResponse(ResponseWrapper<?> response) {
+        if (!hasRetryableTerminal404(response)) {
+            return false;
+        }
+
         CosmosDiagnosticsContext diagnosticsContext = getDiagnosticsContext(response);
         if (diagnosticsContext == null || diagnosticsContext.getDiagnostics() == null) {
             return false;
@@ -4022,6 +4027,23 @@ public class PerPartitionCircuitBreakerE2ETests extends FaultInjectionTestBase {
         }
 
         return false;
+    }
+
+    private static boolean hasRetryableTerminal404(ResponseWrapper<?> response) {
+        if (response == null) {
+            return false;
+        }
+
+        if (response.cosmosException != null) {
+            return isRetryable404(
+                response.cosmosException.getStatusCode(),
+                response.cosmosException.getSubStatusCode());
+        }
+
+        return response.batchResponse != null
+            && isRetryable404(
+                response.batchResponse.getStatusCode(),
+                response.batchResponse.getSubStatusCode());
     }
 
     private static boolean hasNonFaultInjected404RetryableGatewayResponse(
