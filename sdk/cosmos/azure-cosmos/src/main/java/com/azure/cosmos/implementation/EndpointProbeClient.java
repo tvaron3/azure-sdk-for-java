@@ -121,11 +121,7 @@ public class EndpointProbeClient implements Closeable {
                         "Thin-client probe cycle threw an unexpected error; leaving failed regions un-cached.", t);
                     return Mono.just(this.thinClientRoutable);
                 })
-                // Publish completion before downstream observers receive the result.
-                .doOnNext(ignored -> this.cycleInProgress.set(false))
-                // A cancelled cycle emits no value, so release its guard here. Errors are converted
-                // to a value above and therefore use the doOnNext path.
-                .doOnCancel(() -> this.cycleInProgress.set(false));
+                .doFinally(ignored -> this.cycleInProgress.set(false));
         });
     }
 
