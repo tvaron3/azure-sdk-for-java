@@ -148,7 +148,13 @@ public abstract class TestSuiteBase extends CosmosAsyncClientTest {
 
     private static final int SHARED_SUITE_SETUP_TIMEOUT = 2_400_000;
 
-    protected static final int SUITE_SHUTDOWN_TIMEOUT = 60000;
+    protected static final int SUITE_SHUTDOWN_TIMEOUT = 120000;
+
+    private static final Duration SHARED_DATABASE_DELETION_MAX_WAIT = Duration.ofSeconds(45);
+
+    private static final Duration SHARED_DATABASE_DELETION_POLL_INTERVAL = Duration.ofMillis(500);
+
+    private static final Duration SHARED_DATABASE_DELETION_ATTEMPT_TIMEOUT = Duration.ofSeconds(5);
 
     protected static final int WAIT_REPLICA_CATCH_UP_IN_MILLIS = 4000;
 
@@ -754,8 +760,10 @@ public abstract class TestSuiteBase extends CosmosAsyncClientTest {
         logger.info("afterSuite Started");
 
         try (CosmosAsyncClient houseKeepingClient = createGatewayHouseKeepingDocumentClient(true).buildAsyncClient()) {
+            String sharedDatabaseId = SHARED_DATABASE == null ? null : SHARED_DATABASE.getId();
             safeDeleteDatabase(SHARED_DATABASE);
             CosmosDatabaseForTest.cleanupStaleTestDatabases(DatabaseManagerImpl.getInstance(houseKeepingClient));
+            waitForDatabaseDeletion(houseKeepingClient, sharedDatabaseId);
         }
     }
 
@@ -1891,6 +1899,48 @@ public abstract class TestSuiteBase extends CosmosAsyncClientTest {
                 }
             }
         }
+    }
+
+    private static void waitForDatabaseDeletion(CosmosAsyncClient client, String databaseId) {
+
+        if (databaseId == null) {
+            return;
+        }
+
+        long deadlineNanos = System.nanoTime() + SHARED_DATABASE_DELETION_MAX_WAIT.toNanos();
+        Throwable lastFailure = null;
+        while (System.nanoTime() < deadlineNanos) {
+            try {
+                client
+                    .getDatabase(databaseId)
+                    .read()
+                    .block(SHARED_DATABASE_DELETION_ATTEMPT_TIMEOUT);
+            } catch (Throwable throwable) {
+                CosmosException cosmosException = getCosmosException(throwable);
+                if (cosmosException != null
+                    && cosmosException.getStatusCode() == HttpConstants.StatusCodes.NOTFOUND) {
+                    logger.info("Verified deletion of shared database {}", databaseId);
+                    return;
+                }
+                lastFailure = throwable;
+            }
+
+            try {
+                Thread.sleep(SHARED_DATABASE_DELETION_POLL_INTERVAL.toMillis());
+            } catch (InterruptedException interruptedException) {
+                Thread.currentThread().interrupt();
+                throw new AssertionError(
+                    "Interrupted while verifying deletion of shared database " + databaseId,
+                    interruptedException);
+            }
+        }
+
+        throw new AssertionError(
+            String.format(
+                "Shared database '%s' remained readable for %s after deletion",
+                databaseId,
+                SHARED_DATABASE_DELETION_MAX_WAIT),
+            lastFailure);
     }
 
     static protected void safeDeleteSyncDatabase(CosmosDatabase database) {

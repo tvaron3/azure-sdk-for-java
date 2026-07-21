@@ -57,7 +57,10 @@ The multi-master accounts are separated by contention domain:
 | `multimaster-session-http2` | HTTP/2 fast/query/circuit-breaker tests |
 | `multimaster-session-circuit` | Flaky and circuit-breaker tests |
 | `multimaster-multiregion-session-fi` | Fault-injection tests |
-| `multimaster-multiregion-session-split` | Partition split/change-feed split tests |
+| `multimaster-multiregion-session-split` | Multi-master partition split tests |
+| `single-session-cfp-split` | Single-region Session change-feed split tests |
+| `single-strong-cfp-split` | Single-region Strong change-feed split tests |
+| `multimaster-session-cfp-split` | Multi-master change-feed split tests |
 
 Then **update the Key Vault secret / ADO variable manually** with the contents of
 `accounts.json` (paste the JSON into the `cosmos-live-test-accounts` secret).

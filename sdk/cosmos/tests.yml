@@ -4,8 +4,33 @@ extends:
   template: /eng/pipelines/templates/stages/1es-redirect.yml
   parameters:
     stages:
+      - stage: CosmosLiveTestRunLease
+        displayName: 'Lease fixed Cosmos live-test accounts'
+        variables:
+          - template: /eng/pipelines/templates/variables/globals.yml
+          - template: /eng/pipelines/templates/variables/image.yml
+        jobs:
+          - job: WaitForOlderCosmosLiveTestRuns
+            displayName: 'Wait for older Cosmos live-test runs'
+            timeoutInMinutes: 310
+            pool:
+              name: $(LINUXPOOL)
+              image: $(LINUXVMIMAGE)
+              os: linux
+            steps:
+              - task: Bash@3
+                displayName: 'Acquire Cosmos live-test run lease'
+                inputs:
+                  filePath: $(Build.SourcesDirectory)/sdk/cosmos/pipeline/wait-for-older-live-test-builds.sh
+                env:
+                  SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+                  # Normal and weekly definitions share the same fixed account pool.
+                  COSMOS_BUILD_LEASE_DEFINITION_IDS: '675,3686'
+
       - template: /eng/pipelines/templates/stages/archetype-sdk-tests-isolated.yml
         parameters:
+          DependsOn: CosmosLiveTestRunLease
+          DisallowStageRetry: true
           CloudConfig:
             Public:
               ServiceConnection: azure-sdk-tests-cosmos
@@ -47,6 +72,8 @@ extends:
       - template: /eng/pipelines/templates/stages/archetype-sdk-tests-isolated.yml
         parameters:
           TestName: 'Cosmos_Live_Test_Http2'
+          DependsOn: CosmosLiveTestRunLease
+          DisallowStageRetry: true
           CloudConfig:
             Public:
               ServiceConnection: azure-sdk-tests-cosmos
@@ -85,6 +112,8 @@ extends:
       - template: /eng/pipelines/templates/stages/archetype-sdk-tests-isolated.yml
         parameters:
           TestName: 'Cosmos_Live_Test_Http2NetworkFault'
+          DependsOn: CosmosLiveTestRunLease
+          DisallowStageRetry: true
           PreSteps:
             - script: |
                 sudo apt-get update -qq && sudo apt-get install -y -qq iptables
@@ -123,6 +152,8 @@ extends:
       - template: /eng/pipelines/templates/stages/archetype-sdk-tests-isolated.yml
         parameters:
           TestName: 'Cosmos_Live_Test_ThinClient'
+          DependsOn: CosmosLiveTestRunLease
+          DisallowStageRetry: true
           CloudConfig:
             Public:
               ServiceConnection: azure-sdk-tests-cosmos
@@ -155,6 +186,8 @@ extends:
       - template: /eng/pipelines/templates/stages/archetype-sdk-tests-isolated.yml
         parameters:
           TestName: 'Cosmos_Live_Test_ThinClient_EndpointProbe'
+          DependsOn: CosmosLiveTestRunLease
+          DisallowStageRetry: true
           CloudConfig:
             Public:
               ServiceConnection: azure-sdk-tests-cosmos
@@ -191,6 +224,8 @@ extends:
       - template: /eng/pipelines/templates/stages/archetype-sdk-tests-isolated.yml
         parameters:
           TestName: 'Cosmos_Live_Test_ThinClient_MultiRegion'
+          DependsOn: CosmosLiveTestRunLease
+          DisallowStageRetry: true
           CloudConfig:
             Public:
               ServiceConnection: azure-sdk-tests-cosmos
@@ -223,6 +258,8 @@ extends:
       - template: /eng/pipelines/templates/stages/archetype-sdk-tests-isolated.yml
         parameters:
           TestName: 'Cosmos_Live_Test_ThinClient_MultiMaster'
+          DependsOn: CosmosLiveTestRunLease
+          DisallowStageRetry: true
           CloudConfig:
             Public:
               ServiceConnection: azure-sdk-tests-cosmos
@@ -255,6 +292,8 @@ extends:
       - template: /eng/pipelines/templates/stages/archetype-sdk-tests-isolated.yml
         parameters:
           TestName: 'Cosmos_Live_Test_GSI'
+          DependsOn: CosmosLiveTestRunLease
+          DisallowStageRetry: true
           CloudConfig:
             Public:
               ServiceConnection: azure-sdk-tests-cosmos
@@ -287,6 +326,8 @@ extends:
       - template: /eng/pipelines/templates/stages/archetype-sdk-tests-isolated.yml
         parameters:
           TestName: 'Cosmos_Live_Test_FaultInjectionCustomerWorkflows'
+          DependsOn: CosmosLiveTestRunLease
+          DisallowStageRetry: true
           CloudConfig:
             Public:
               ServiceConnection: azure-sdk-tests-cosmos
@@ -319,6 +360,8 @@ extends:
       - template: /eng/pipelines/templates/stages/archetype-sdk-tests-isolated.yml
         parameters:
           TestName: 'Cosmos_Live_Test_FaultInjectionSingleMasterCustomerWorkflows'
+          DependsOn: CosmosLiveTestRunLease
+          DisallowStageRetry: true
           CloudConfig:
             Public:
               ServiceConnection: azure-sdk-tests-cosmos
@@ -351,6 +394,8 @@ extends:
       - template: /eng/pipelines/templates/stages/archetype-sdk-tests-isolated.yml
         parameters:
           TestName: 'Spring_Data_Cosmos_Integration'
+          DependsOn: CosmosLiveTestRunLease
+          DisallowStageRetry: true
           CloudConfig:
             Public:
               ServiceConnection: azure-sdk-tests-cosmos
@@ -376,6 +421,8 @@ extends:
       - template: /eng/pipelines/templates/stages/archetype-sdk-tests-isolated.yml
         parameters:
           TestName: 'Kafka_Cosmos_Integration'
+          DependsOn: CosmosLiveTestRunLease
+          DisallowStageRetry: true
           CloudConfig:
             Public:
               ServiceConnection: azure-sdk-tests-cosmos

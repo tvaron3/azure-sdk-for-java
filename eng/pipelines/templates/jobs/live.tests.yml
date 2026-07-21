@@ -27,6 +27,7 @@ parameters:
   UseFederatedAuth: false
   PersistOidcToken: false
   VersionOverride: $(VersionOverride)
+  DisallowStageRetry: false
 
 jobs:
   - job:
@@ -79,6 +80,16 @@ jobs:
       - template: /eng/pipelines/templates/steps/initialize-test-environment.yml
         parameters:
           OS: ${{ parameters.OSName }}
+
+      - ${{ if eq(parameters.DisallowStageRetry, 'true') }}:
+        - bash: |
+            if [ "${SYSTEM_STAGEATTEMPT:-1}" -gt 1 ]; then
+              echo "##vso[task.logissue type=error]This fixed-account stage cannot be retried in place. Queue a new pipeline run so the account lease is reacquired."
+              exit 1
+            fi
+          displayName: 'Reject stage retry without account lease'
+          env:
+            SYSTEM_STAGEATTEMPT: $(System.StageAttempt)
 
       # macOS has known issues running HTTP fault injector, change this once
       # https://github.com/Azure/azure-sdk-tools/pull/6216 is resolved
@@ -162,4 +173,3 @@ jobs:
               UseFederatedAuth: ${{ parameters.UseFederatedAuth }}
               ServiceConnection: ${{ parameters.CloudConfig.ServiceConnection }}
               SubscriptionConfigurationFilePaths: ${{ parameters.CloudConfig.SubscriptionConfigurationFilePaths }}
-

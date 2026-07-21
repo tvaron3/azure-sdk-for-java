@@ -13,6 +13,8 @@ provisioner). It is the Track A mechanism from the retargeting plan.
 | `resolve-cosmos-test-account.sh` | Pre-step parser: reads the JSON secret + a selector, exports `ACCOUNT_HOST`/`ACCOUNT_KEY`. |
 | `resolve-cosmos-test-account.tests.sh` | Local tests for the parser (no ADO required). |
 | `resolve-test-account-steps.yml` | Reusable `PreTestRunSteps` template that runs the parser for a selector. |
+| `wait-for-older-live-test-builds.sh` | Build-level lease: waits for older active runs of the same pipeline. |
+| `wait-for-older-live-test-builds.tests.sh` | Local tests for the build-level lease. |
 
 ## How it works
 
@@ -36,13 +38,16 @@ All Cosmos live-test matrix legs run on **linux** agents, so the parser is bash 
 ## Selectors (from the test matrices)
 
 `single-session`, `single-session-pmerge`, `single-strong`, `single-session-split`,
-`single-strong-split`, `multiregion-strong`, `multimaster-multiregion-session`,
+`single-session-cfp-split`, `single-strong-split`, `single-strong-cfp-split`,
+`multiregion-strong`, `multimaster-multiregion-session`, `multimaster-session-control`,
+`multimaster-session-http2`, `multimaster-session-circuit`,
 `multimaster-multiregion-session-fi`, `multimaster-multiregion-session-split`,
-`multiregion-tc-session`, `gsi-single-session`, `kafka-session`.
+`multimaster-session-cfp-split`, `multiregion-tc-session`, `gsi-single-session`,
+`kafka-session`.
 
-The `*-split` accounts are dedicated to the partition-split-forcing profiles
-(`-Pcfp-split`, `-Psplit`), which raise container throughput to force splits. Isolating
-them keeps that split churn off the shared query/fast/direct accounts.
+The `*-split` and `*-cfp-split` accounts separately isolate the two
+partition-split-forcing profiles. This prevents `-Psplit` and `-Pcfp-split` jobs from
+queueing backend splits on the same account.
 The `*-fi` account isolates fault-injection profiles from normal traffic so injected
 availability failures are not compounded by unrelated shared-account load.
 
@@ -74,7 +79,23 @@ The main `Cosmos_live_test` stage spans many consistency/topology configs, so ea
 ### Currently wired
 
 - `Cosmos_live_test` (main) — per-leg selector.
-- `Cosmos_Live_Test_Http2` — `multimaster-multiregion-session`.
+- `Cosmos_Live_Test_Http2` — `multimaster-session-http2`.
+
+### Run lease
+
+`CosmosLiveTestRunLease` executes before every test stage. It queries Azure DevOps with
+`System.AccessToken` and waits while any lower-ID nonterminal build from the normal or
+weekly Cosmos definitions is queued or running. Build IDs provide a deterministic order
+without an external lock service, so overlapping pipeline runs cannot simultaneously use
+the fixed account pool.
+
+The lease job holds one Linux pool agent while waiting. Keep enough pool capacity for the
+older run's jobs to make progress; if the pool becomes constrained, replace this script
+with an Azure DevOps Environment exclusive-lock check so waiting happens server-side.
+
+Do not use Azure DevOps **Rerun stage** for this pipeline: dependency stages are not
+re-executed, so the lease would not be reacquired. Cosmos stages reject `System.StageAttempt`
+greater than one; queue a new build instead.
 
 NOT yet wired (need follow-up): the thin-client stages and GSI (their accounts need
 thin-client / GSI-preview enablement that plain account creation doesn't do), Kafka
@@ -99,4 +120,5 @@ regenerated JSON from `New-CosmosLiveTestAccounts.ps1`.
 
 ```bash
 bash sdk/cosmos/pipeline/resolve-cosmos-test-account.tests.sh
+bash sdk/cosmos/pipeline/wait-for-older-live-test-builds.tests.sh
 ```

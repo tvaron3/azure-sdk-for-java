@@ -119,13 +119,19 @@ parameters:
 - name: PersistOidcToken
   type: boolean
   default: false
+- name: DependsOn
+  type: object
+  default: []
+- name: DisallowStageRetry
+  type: boolean
+  default: false
 
 stages:
 - ${{ each cloud in parameters.CloudConfig }}:
   - ${{ if or(contains(parameters.Clouds, cloud.key), and(contains(variables['Build.DefinitionName'], 'tests-weekly'), contains(parameters.SupportedClouds, cloud.key))) }}:
     - ${{ if not(contains(parameters.UnsupportedClouds, cloud.key)) }}:
       - stage: ${{ cloud.key }}_${{ parameters.TestName }}
-        dependsOn: []
+        dependsOn: ${{ parameters.DependsOn }}
         variables:
           - template: /eng/pipelines/templates/variables/globals.yml
           - template: /eng/pipelines/templates/variables/image.yml
@@ -172,6 +178,7 @@ stages:
               UseHttpFaultInjector: ${{ parameters.UseHttpFaultInjector }}
               UseFederatedAuth: ${{ parameters.UseFederatedAuth }}
               PersistOidcToken: ${{ parameters.PersistOidcToken }}
+              DisallowStageRetry: ${{ parameters.DisallowStageRetry }}
 
             MatrixConfigs:
               # Enumerate platforms and additional platforms based on supported clouds (sparse platform<-->cloud matrix).

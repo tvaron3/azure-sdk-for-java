@@ -41,8 +41,28 @@
       "multiWrite": false,
       "secondaryKey": "REPLACE_SECONDARY_KEY"
     },
+    "single-session-cfp-split": {
+      "endpoint": "https://REPLACE-single-session-cfp-split.documents.azure.com:443/",
+      "key": "REPLACE_KEY",
+      "regions": [
+        "Central US"
+      ],
+      "consistency": "Session",
+      "multiWrite": false,
+      "secondaryKey": "REPLACE_SECONDARY_KEY"
+    },
     "single-strong-split": {
       "endpoint": "https://REPLACE-single-strong-split.documents.azure.com:443/",
+      "key": "REPLACE_KEY",
+      "regions": [
+        "Central US"
+      ],
+      "consistency": "Strong",
+      "multiWrite": false,
+      "secondaryKey": "REPLACE_SECONDARY_KEY"
+    },
+    "single-strong-cfp-split": {
+      "endpoint": "https://REPLACE-single-strong-cfp-split.documents.azure.com:443/",
       "key": "REPLACE_KEY",
       "regions": [
         "Central US"
@@ -134,6 +154,20 @@
     },
     "multimaster-multiregion-session-split": {
       "endpoint": "https://REPLACE-multimaster-multiregion-session-split.documents.azure.com:443/",
+      "key": "REPLACE_KEY",
+      "regions": [
+        "Central US",
+        "East US 2"
+      ],
+      "preferredLocations": [
+        "East US 2"
+      ],
+      "consistency": "Session",
+      "multiWrite": true,
+      "secondaryKey": "REPLACE_SECONDARY_KEY"
+    },
+    "multimaster-session-cfp-split": {
+      "endpoint": "https://REPLACE-multimaster-session-cfp-split.documents.azure.com:443/",
       "key": "REPLACE_KEY",
       "regions": [
         "Central US",
