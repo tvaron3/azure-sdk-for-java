@@ -754,7 +754,8 @@ public abstract class TestSuiteBase extends CosmosAsyncClientTest {
 
     @AfterSuite(groups = {"thinclient", "thinclientEndpointProbe", "fast", "long", "direct", "multi-region", "multi-master", "flaky-multi-master",
         "emulator", "split", "query", "cfp-split", "circuit-breaker-misc-gateway", "circuit-breaker-misc-direct",
-        "circuit-breaker-read-all-read-many", "fi-multi-master", "fi-customer-workflows", "fi-sm-customer-workflows", "long-emulator", "fi-thinclient-multi-region", "fi-thinclient-multi-master", "multi-region-strong", "manual-http-network-fault", "consistency-overrides"}, timeOut = SUITE_SHUTDOWN_TIMEOUT)
+        "circuit-breaker-read-all-read-many", "fi-multi-master", "fi-customer-workflows", "fi-sm-customer-workflows", "long-emulator", "fi-thinclient-multi-region", "fi-thinclient-multi-master", "multi-region-strong", "manual-http-network-fault", "consistency-overrides"},
+        timeOut = SUITE_SHUTDOWN_TIMEOUT, alwaysRun = true)
     public void afterSuite() {
 
         logger.info("afterSuite Started");
@@ -762,7 +763,6 @@ public abstract class TestSuiteBase extends CosmosAsyncClientTest {
         try (CosmosAsyncClient houseKeepingClient = createGatewayHouseKeepingDocumentClient(true).buildAsyncClient()) {
             String sharedDatabaseId = SHARED_DATABASE == null ? null : SHARED_DATABASE.getId();
             safeDeleteDatabase(SHARED_DATABASE);
-            CosmosDatabaseForTest.cleanupStaleTestDatabases(DatabaseManagerImpl.getInstance(houseKeepingClient));
             waitForDatabaseDeletion(houseKeepingClient, sharedDatabaseId);
         }
     }

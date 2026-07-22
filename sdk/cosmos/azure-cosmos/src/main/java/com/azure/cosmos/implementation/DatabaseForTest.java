@@ -3,7 +3,6 @@
 
 package com.azure.cosmos.implementation;
 
-import com.azure.cosmos.implementation.apachecommons.lang.RandomStringUtils;
 import com.azure.cosmos.implementation.apachecommons.lang.StringUtils;
 import com.azure.cosmos.models.FeedResponse;
 import com.azure.cosmos.models.SqlParameter;
@@ -15,9 +14,11 @@ import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 public class DatabaseForTest {
     private static final Logger logger = LoggerFactory.getLogger(DatabaseForTest.class);
@@ -39,11 +40,12 @@ public class DatabaseForTest {
     }
 
     private boolean isOlderThan(Duration dur) {
-        return createdTime.isBefore(LocalDateTime.now().minus(dur));
+        return createdTime.isBefore(LocalDateTime.now(ZoneOffset.UTC).minus(dur));
     }
 
     public static String generateId() {
-        return SHARED_DB_ID_PREFIX + DELIMITER + TIME_FORMATTER.format(LocalDateTime.now()) + DELIMITER + RandomStringUtils.randomAlphabetic(3);
+        return SHARED_DB_ID_PREFIX + DELIMITER + TIME_FORMATTER.format(LocalDateTime.now(ZoneOffset.UTC))
+            + DELIMITER + UUID.randomUUID();
     }
 
     private static DatabaseForTest from(Database db) {

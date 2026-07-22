@@ -53,12 +53,6 @@ public class Utils {
         return DatabaseForTest.create(DatabaseManagerImpl.getInstance(client)).createdDatabase;
     }
 
-    public static void safeCleanDatabases(AsyncDocumentClient client) {
-        if (client != null) {
-            DatabaseForTest.cleanupStaleTestDatabases(DatabaseManagerImpl.getInstance(client));
-        }
-    }
-
     public static void safeClean(AsyncDocumentClient client, Database database) {
         if (database != null) {
             safeClean(client, database.getId());

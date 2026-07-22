@@ -222,7 +222,7 @@ public class CosmosTracerTest extends TestSuiteBase {
         mockTracer.reset();
 
         FeedResponse<CosmosDatabaseProperties> feedResponseReadAllDatabases =
-            client.readAllDatabases(new CosmosQueryRequestOptions()).byPage().single().block();
+            client.readAllDatabases(new CosmosQueryRequestOptions()).byPage().next().block();
         assertThat(feedResponseReadAllDatabases).isNotNull();
         verifyTracerAttributes(
             mockTracer,

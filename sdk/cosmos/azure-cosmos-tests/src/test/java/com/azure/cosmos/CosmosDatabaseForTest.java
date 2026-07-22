@@ -8,7 +8,6 @@ import com.azure.cosmos.models.CosmosDatabaseProperties;
 import com.azure.cosmos.models.SqlParameter;
 import com.azure.cosmos.models.SqlQuerySpec;
 import com.azure.cosmos.util.CosmosPagedFlux;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,9 +15,11 @@ import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -27,7 +28,7 @@ public class CosmosDatabaseForTest {
     public static final String SHARED_DB_ID_PREFIX = "RxJava.SDKTest.SharedDatabase";
     private static final Duration CLEANUP_THRESHOLD_DURATION = Duration.ofHours(8);
     private static final String DELIMITER = "_";
-    private static DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss");
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss");
 
     public LocalDateTime createdTime;
     public CosmosAsyncDatabase createdDatabase;
@@ -42,11 +43,12 @@ public class CosmosDatabaseForTest {
     }
 
     private boolean isOlderThan(Duration dur) {
-        return createdTime.isBefore(LocalDateTime.now().minus(dur));
+        return createdTime.isBefore(LocalDateTime.now(ZoneOffset.UTC).minus(dur));
     }
 
     public static String generateId() {
-        return SHARED_DB_ID_PREFIX + DELIMITER + TIME_FORMATTER.format(LocalDateTime.now()) + DELIMITER + RandomStringUtils.randomAlphabetic(3);
+        return SHARED_DB_ID_PREFIX + DELIMITER + TIME_FORMATTER.format(LocalDateTime.now(ZoneOffset.UTC))
+            + DELIMITER + UUID.randomUUID();
     }
 
     private static CosmosDatabaseForTest from(CosmosAsyncDatabase db) {

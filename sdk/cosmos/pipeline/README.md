@@ -13,8 +13,6 @@ provisioner). It is the Track A mechanism from the retargeting plan.
 | `resolve-cosmos-test-account.sh` | Pre-step parser: reads the JSON secret + a selector, exports `ACCOUNT_HOST`/`ACCOUNT_KEY`. |
 | `resolve-cosmos-test-account.tests.sh` | Local tests for the parser (no ADO required). |
 | `resolve-test-account-steps.yml` | Reusable `PreTestRunSteps` template that runs the parser for a selector. |
-| `wait-for-older-live-test-builds.sh` | Build-level lease: waits for older active runs of the same pipeline. |
-| `wait-for-older-live-test-builds.tests.sh` | Local tests for the build-level lease. |
 
 ## How it works
 
@@ -81,22 +79,6 @@ The main `Cosmos_live_test` stage spans many consistency/topology configs, so ea
 - `Cosmos_live_test` (main) — per-leg selector.
 - `Cosmos_Live_Test_Http2` — `multimaster-session-http2`.
 
-### Run lease
-
-`CosmosLiveTestRunLease` executes before every test stage. It queries Azure DevOps with
-`System.AccessToken` and waits while any lower-ID nonterminal build from the normal or
-weekly Cosmos definitions is queued or running. Build IDs provide a deterministic order
-without an external lock service, so overlapping pipeline runs cannot simultaneously use
-the fixed account pool.
-
-The lease job holds one Linux pool agent while waiting. Keep enough pool capacity for the
-older run's jobs to make progress; if the pool becomes constrained, replace this script
-with an Azure DevOps Environment exclusive-lock check so waiting happens server-side.
-
-Do not use Azure DevOps **Rerun stage** for this pipeline: dependency stages are not
-re-executed, so the lease would not be reacquired. Cosmos stages reject `System.StageAttempt`
-greater than one; queue a new build instead.
-
 NOT yet wired (need follow-up): the thin-client stages and GSI (their accounts need
 thin-client / GSI-preview enablement that plain account creation doesn't do), Kafka
 (entangled with AAD — belongs in the separate AAD pipeline), and Spring (uses its own
@@ -120,5 +102,4 @@ regenerated JSON from `New-CosmosLiveTestAccounts.ps1`.
 
 ```bash
 bash sdk/cosmos/pipeline/resolve-cosmos-test-account.tests.sh
-bash sdk/cosmos/pipeline/wait-for-older-live-test-builds.tests.sh
 ```
