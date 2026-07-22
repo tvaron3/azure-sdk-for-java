@@ -1,14 +1,34 @@
 # Release History
 
-## 2.62.0-beta.2 (Unreleased)
+## 2.62.0 (2026-07-22)
 
 ### Features Added
 
-### Breaking Changes
+* `models.ManagedClusterSecurityProfileDefenderSecurityGating` was added
 
-### Bugs Fixed
+* `models.SchedulerInstanceProfile` was added
+
+* `models.AutoScaleProfile` was added
+
+* `models.SchedulerConfigMode` was added
+
+* `models.SchedulerProfile` was added
+
+* `models.ManagedClusterSecurityProfileDefenderSecurityGatingIdentity` was added
+
+#### `models.ScaleProfile` was modified
+
+* `withAutoscale(java.util.List)` was added
+* `autoscale()` was added
+
+#### `models.ManagedClusterSecurityProfileDefender` was modified
+
+* `securityGating()` was added
+* `withSecurityGating(models.ManagedClusterSecurityProfileDefenderSecurityGating)` was added
 
 ### Other Changes
+
+- Updated `api-version` to `2026-05-01`.
 
 ## 2.61.1 (2026-07-01)
 
