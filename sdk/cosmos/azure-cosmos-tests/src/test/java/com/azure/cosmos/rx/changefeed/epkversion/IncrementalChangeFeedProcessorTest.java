@@ -2088,10 +2088,8 @@ public class IncrementalChangeFeedProcessorTest extends TestSuiteBase {
             assertThat(feedRanges.size()).isEqualTo(1);
 
             List<InternalObjectNode> createdDocuments = new ArrayList<>();
-            // even though CFP is at lease once delivery, but in the test, we did not expect any load balancer would cause the duplicate processing
-            // so we should expect each item will only be delivered once
-            // using list instead of map to confirm
-            List<JsonNode> receivedDocuments = new ArrayList<>();
+            // CFP is at-least-once, so validate completion using unique document IDs.
+            Map<String, JsonNode> receivedDocuments = new ConcurrentHashMap<>();
 
             // generate a first batch of documents
             setupReadFeedDocuments(createdDocuments, createdFeedCollectionForSplit, FEED_COUNT);
@@ -2131,10 +2129,8 @@ public class IncrementalChangeFeedProcessorTest extends TestSuiteBase {
             waitToReceiveDocuments(receivedDocuments, 30 * CHANGE_FEED_PROCESSOR_TIMEOUT, 2 * FEED_COUNT);
 
             assertThat(receivedDocuments.size()).isEqualTo(createdDocuments.size());
-            Map<String, JsonNode> receivedDocumentsMap =
-                receivedDocuments.stream().collect(Collectors.toMap(item -> item.get("id").asText(), item -> item));
             for (InternalObjectNode item : createdDocuments) {
-                assertThat(receivedDocumentsMap.containsKey(item.getId())).isTrue();
+                assertThat(receivedDocuments.containsKey(item.getId())).isTrue();
             }
 
         } finally {
