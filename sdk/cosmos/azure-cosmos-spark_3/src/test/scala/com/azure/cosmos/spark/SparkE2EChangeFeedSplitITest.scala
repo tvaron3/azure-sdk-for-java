@@ -7,6 +7,7 @@ import com.azure.cosmos.implementation.{SparkBridgeImplementationInternal, TestC
 import com.azure.cosmos.models.{PartitionKey, PartitionKeyDefinition, ThroughputProperties}
 import com.azure.cosmos.spark.diagnostics.BasicLoggingTrait
 import org.apache.hadoop.fs.Path
+import org.apache.spark.sql.Row
 import org.scalatest.concurrent.TimeLimits
 import org.scalatest.time.{Minutes, Span}
 
@@ -33,6 +34,10 @@ class SparkE2EChangeFeedSplitITest
    logWarning("Skipping this test on emulator, because emulator doesn't allow splitting partitions")
   } else {
    val container = cosmosClient.getDatabase(cosmosDatabase).getContainer(cosmosContainer)
+   val initialFeedRanges = container.getFeedRanges.block().asScala
+    .map(feedRange => SparkBridgeImplementationInternal.toNormalizedRange(feedRange))
+    .sortBy(_.min)
+    .toSeq
 
    for (sequenceNumber <- 1 to 50) {
     val objectNode = Utils.getSimpleObjectMapper.createObjectNode()
@@ -66,7 +71,9 @@ class SparkE2EChangeFeedSplitITest
    rowsArray1.length > 0 shouldEqual true
    rowsArray1.length <= df1.rdd.getNumPartitions shouldEqual true
 
-   val initialCount = rowsArray1.length
+   val firstBatchSequenceNumbers = getSequenceNumbers(rowsArray1)
+   firstBatchSequenceNumbers.distinct.size shouldEqual firstBatchSequenceNumbers.size
+   df1.rdd.getNumPartitions shouldEqual initialFeedRanges.size
 
    df1.schema.equals(
     ChangeFeedTable.defaultIncrementalChangeFeedSchemaForInferenceDisabled) shouldEqual true
@@ -91,67 +98,84 @@ class SparkE2EChangeFeedSplitITest
     .key(cosmosMasterKey)
     .buildClient()
 
-   val initialThroughput = separateClient
-    .getDatabase(cosmosDatabase)
-    .getContainer(cosmosContainer)
-    .readThroughput()
-    .getProperties
-    .getManualThroughput
-
-   val newThroughputToForceSplits = (Math.ceil(initialThroughput.toDouble / 6000) * 2 * 10000).toInt
-
-   val response = separateClient
-    .getDatabase(cosmosDatabase)
-    .getContainer(cosmosContainer)
-    .replaceThroughput(ThroughputProperties.createManualThroughput(newThroughputToForceSplits))
-
-   response.getStatusCode shouldEqual 200
-
-   val initialPartitionCount = df1.rdd.getNumPartitions
-   var currentPartitionCount = separateClient
-    .getDatabase(cosmosDatabase)
-    .getContainer(cosmosContainer)
-    .getFeedRanges
-    .size()
-
-   while (currentPartitionCount < initialPartitionCount * 2) {
-    logInfo(s"Offer replace still pending current Partition count '$currentPartitionCount' - " +
-     s"target Partition count '${initialPartitionCount * 2}'- waiting for 1 second...")
-    Thread.sleep(1000)
-
-    currentPartitionCount = separateClient
+   try {
+    val splitContainer = separateClient
      .getDatabase(cosmosDatabase)
      .getContainer(cosmosContainer)
-     .getFeedRanges
-     .size()
-   }
 
-   val splitContainer = separateClient
-    .getDatabase(cosmosDatabase)
-    .getContainer(cosmosContainer)
-   val childRanges = splitContainer.getFeedRanges.asScala
-    .map(SparkBridgeImplementationInternal.toNormalizedRange)
-    .sortBy(_.min)
-   val partitionKeyDefinition = splitContainer.read().getProperties.getPartitionKeyDefinition
+    val initialThroughput = splitContainer
+     .readThroughput()
+     .getProperties
+     .getManualThroughput
+    val newThroughputToForceSplits = (Math.ceil(initialThroughput.toDouble / 6000) * 2 * 10000).toInt
+    val response = splitContainer
+     .replaceThroughput(ThroughputProperties.createManualThroughput(newThroughputToForceSplits))
 
-   for (sequenceNumber <- 51 to 100) {
-    val id = getPartitionKeyValueInRange(childRanges.head, partitionKeyDefinition)
-    val objectNode = Utils.getSimpleObjectMapper.createObjectNode()
-    objectNode.put("name", "Shrodigner's cat")
-    objectNode.put("type", "cat")
-    objectNode.put("age", 20)
-    objectNode.put("sequenceNumber", sequenceNumber)
-    objectNode.put("id", id)
-    splitContainer.createItem(objectNode)
-   }
+    response.getStatusCode shouldEqual 200
 
-   val cfgWithoutItemCountPerTriggerHint = cfg.filter(keyValuePair => !keyValuePair._1.equals("spark.cosmos.changeFeed.itemCountPerTriggerHint"))
-   val df2 = spark.read.format("cosmos.oltp.changeFeed").options(cfgWithoutItemCountPerTriggerHint).load()
-   val rowsArray2 = failAfter(Span(5, Minutes)) {
-    df2.collect()
+    val (splitParent, childRanges) = failAfter(Span(5, Minutes)) {
+     var splitResult = Option.empty[(NormalizedRange, Seq[NormalizedRange])]
+
+     while (splitResult.isEmpty) {
+      val currentRanges = splitContainer.getFeedRanges.asScala
+       .map(SparkBridgeImplementationInternal.toNormalizedRange)
+       .sortBy(_.min)
+       .toSeq
+      splitResult = initialFeedRanges
+       .map(parent => parent -> currentRanges.filter(child => isStrictSubRange(parent, child)))
+       .find(_._2.size >= 2)
+
+      if (splitResult.isEmpty) {
+       logInfo("Offer replace still pending a split of one cached parent range - waiting for 1 second...")
+       Thread.sleep(1000)
+      }
+     }
+
+     splitResult.get
+    }
+    logInfo(s"Cached parent '$splitParent' split into '${childRanges.mkString(",")}'.")
+    val partitionKeyDefinition = splitContainer.read().getProperties.getPartitionKeyDefinition
+
+    for (sequenceNumber <- 51 to 100) {
+     val id = getPartitionKeyValueInRange(childRanges.head, partitionKeyDefinition)
+     val objectNode = Utils.getSimpleObjectMapper.createObjectNode()
+     objectNode.put("name", "Shrodigner's cat")
+     objectNode.put("type", "cat")
+     objectNode.put("age", 20)
+     objectNode.put("sequenceNumber", sequenceNumber)
+     objectNode.put("id", id)
+     splitContainer.createItem(objectNode)
+    }
+
+    val cfgWithoutItemCountPerTriggerHint = cfg.filter(
+     keyValuePair => !keyValuePair._1.equals("spark.cosmos.changeFeed.itemCountPerTriggerHint"))
+    val df2 = spark.read.format("cosmos.oltp.changeFeed").options(cfgWithoutItemCountPerTriggerHint).load()
+    val rowsArray2 = failAfter(Span(5, Minutes)) {
+     df2.collect()
+    }
+    val secondBatchSequenceNumbers = getSequenceNumbers(rowsArray2)
+    val expectedSecondBatchSequenceNumbers = (1 to 100).toSet -- firstBatchSequenceNumbers.toSet
+    secondBatchSequenceNumbers.distinct.size shouldEqual secondBatchSequenceNumbers.size
+    secondBatchSequenceNumbers.toSet shouldEqual expectedSecondBatchSequenceNumbers
+   } finally {
+    separateClient.close()
    }
-   rowsArray2 should have size 100 - initialCount
   }
+ }
+
+ private def getSequenceNumbers(rows: Array[Row]): Seq[Int] = {
+  val objectMapper = Utils.getSimpleObjectMapper
+  rows.map(row =>
+   objectMapper
+    .readTree(row.getAs[String](CosmosTableSchemaInferrer.RawJsonBodyAttributeName))
+    .get("sequenceNumber")
+    .asInt())
+ }
+
+ private def isStrictSubRange(parent: NormalizedRange, child: NormalizedRange): Boolean = {
+  child != parent &&
+   child.min.compareTo(parent.min) >= 0 &&
+   child.max.compareTo(parent.max) <= 0
  }
 
  private def getPartitionKeyValueInRange(

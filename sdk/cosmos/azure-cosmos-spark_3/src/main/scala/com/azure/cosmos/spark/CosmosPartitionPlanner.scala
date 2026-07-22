@@ -414,6 +414,16 @@ private object CosmosPartitionPlanner extends BasicLoggingTrait {
       logDebug(endOffsetDebug.toString)
     }
 
+    createLatestOffset(startOffset, inputPartitions)
+  }
+  // scalastyle:on method.length
+  // scalastyle:on parameter.number
+
+  private[spark] def createLatestOffset
+  (
+    startOffset: ChangeFeedOffset,
+    inputPartitions: Array[CosmosInputPartition]
+  ): ChangeFeedOffset = {
     val changeFeedStateJson = SparkBridgeImplementationInternal
       .createChangeFeedStateJson(
         startOffset.changeFeedState,
@@ -421,10 +431,8 @@ private object CosmosPartitionPlanner extends BasicLoggingTrait {
 
     ChangeFeedOffset(changeFeedStateJson, Some(inputPartitions))
   }
-  // scalastyle:on method.length
-  // scalastyle:on parameter.number
 
-  private[this] def getOrderedPartitionMetadataWithStartLsn
+  private[spark] def getOrderedPartitionMetadataWithStartLsn
   (
     stateJson: String,
     latestPartitionMetadata: Array[PartitionMetadata]
@@ -839,9 +847,20 @@ private object CosmosPartitionPlanner extends BasicLoggingTrait {
                 ))
               })
           .collectSeq()
-          .map(metadata => metadata.flatMap(_.splitByLatestLsn()))
+          .map(metadata => expandPartitionMetadataByLatestLsn(metadata, isChangeFeed))
       })
       .block()
       .toArray
+  }
+
+  private[spark] def expandPartitionMetadataByLatestLsn(
+    metadata: Seq[PartitionMetadata],
+    isChangeFeed: Boolean
+  ): Seq[PartitionMetadata] = {
+    if (isChangeFeed) {
+      metadata.flatMap(_.splitByLatestLsn())
+    } else {
+      metadata
+    }
   }
 }

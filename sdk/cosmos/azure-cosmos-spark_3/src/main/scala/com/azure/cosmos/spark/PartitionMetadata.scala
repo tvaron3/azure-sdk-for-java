@@ -151,25 +151,42 @@ private[cosmos] case class PartitionMetadata
   }
 
   def splitByLatestLsn(): Seq[PartitionMetadata] = {
-    val latestLsnsByRange = this.fromNowContinuationState match {
-      case Some(state) =>
-        SparkBridgeImplementationInternal.extractContinuationTokensFromChangeFeedStateJson(state)
-      case None =>
-        Array(this.feedRange -> this.latestLsn)
-    }
+    this.fromNowContinuationState match {
+      case None => Seq(this)
+      case Some(stateJson) =>
+        val parsedState = SparkBridgeImplementationInternal.parseChangeFeedState(stateJson)
+        val latestLsnsByRange =
+          SparkBridgeImplementationInternal.extractContinuationTokensFromChangeFeedState(parsedState)
 
-    if (latestLsnsByRange.length <= 1) {
-      Seq(this)
-    } else {
-      logInfo(
-        s"FromNow continuation for range '${this.feedRange}' resolved to " +
-          s"${latestLsnsByRange.length} effective ranges. Planning each range independently.")
+        if (latestLsnsByRange.length <= 1) {
+          Seq(this)
+        } else {
+          logInfo(
+            s"FromNow continuation for range '${this.feedRange}' resolved to " +
+              s"${latestLsnsByRange.length} effective ranges. Planning each range independently.")
 
-      latestLsnsByRange
-        .flatMap(rangeAndLsn =>
-          this.intersect(this.feedRange, rangeAndLsn._1)
-            .map(effectiveRange => this.withFeedRangeAndLatestLsn(effectiveRange, rangeAndLsn._2)))
-        .toSeq
+          val effectiveRangesAndLsns = latestLsnsByRange
+            .flatMap(rangeAndLsn =>
+              this.intersect(this.feedRange, rangeAndLsn._1)
+                .map(effectiveRange => effectiveRange -> rangeAndLsn._2))
+            .toSeq
+          val effectiveStates = SparkBridgeImplementationInternal.extractChangeFeedStateForRanges(
+            parsedState,
+            effectiveRangesAndLsns.map(_._1))
+
+          assert(
+            effectiveStates.length == effectiveRangesAndLsns.length,
+            "Expected one continuation state for every effective range.")
+
+          effectiveRangesAndLsns
+            .zip(effectiveStates)
+            .map { case ((effectiveRange, effectiveLatestLsn), effectiveState) =>
+              this.withFeedRangeAndLatestLsn(
+                effectiveRange,
+                effectiveLatestLsn,
+                effectiveState)
+            }
+        }
     }
   }
 
@@ -240,7 +257,8 @@ private[cosmos] case class PartitionMetadata
 
   private def withFeedRangeAndLatestLsn(
     effectiveRange: NormalizedRange,
-    effectiveLatestLsn: Long
+    effectiveLatestLsn: Long,
+    effectiveFromNowContinuationState: String
   ): PartitionMetadata = {
     new PartitionMetadata(
       this.userConfig,
@@ -256,7 +274,7 @@ private[cosmos] case class PartitionMetadata
       this.endLsn,
       new AtomicLong(this.lastRetrieved.get),
       new AtomicLong(this.lastUpdated.get),
-      this.getFromNowContinuationStateForRange(effectiveRange)
+      Some(effectiveFromNowContinuationState)
     )
   }
 

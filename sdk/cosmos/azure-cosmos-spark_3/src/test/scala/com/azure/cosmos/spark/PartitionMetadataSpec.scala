@@ -151,9 +151,10 @@ class PartitionMetadataSpec extends UnitSpec {
 
   it should "preserve and plan every range from a composite FromNow continuation" in {
     val lowerRange = NormalizedRange("", "AA")
-    val upperRange = NormalizedRange("AA", "FF")
+    val middleRange = NormalizedRange("AA", "BB")
+    val upperRange = NormalizedRange("BB", "FF")
     val fromNowState = createChangeFeedState(
-      Seq(lowerRange -> 179L, upperRange -> 129L),
+      Seq(lowerRange -> 179L, middleRange -> 159L, upperRange -> 129L),
       "INCREMENTAL")
     val metadata = PartitionMetadata(
       Map[String, String](),
@@ -171,7 +172,7 @@ class PartitionMetadataSpec extends UnitSpec {
 
     val splitMetadata = metadata.splitByLatestLsn()
     splitMetadata.map(m => m.feedRange -> m.latestLsn) should contain theSameElementsInOrderAs
-      Seq(lowerRange -> 179L, upperRange -> 129L)
+      Seq(lowerRange -> 179L, middleRange -> 159L, upperRange -> 129L)
 
     splitMetadata.foreach(m => {
       m.fromNowContinuationState shouldBe defined
@@ -186,7 +187,7 @@ class PartitionMetadataSpec extends UnitSpec {
       isChangeFeed = true)
 
     planned.map(m => m.feedRange -> m.endLsn.get) should contain theSameElementsInOrderAs
-      Seq(lowerRange -> 179L, upperRange -> 129L)
+      Seq(lowerRange -> 179L, middleRange -> 159L, upperRange -> 129L)
   }
 
   it should "create instance with valid parameters via apply in full fidelity mode" in {
