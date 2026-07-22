@@ -3,20 +3,24 @@
 package com.azure.cosmos.spark
 
 import com.azure.cosmos.CosmosClientBuilder
-import com.azure.cosmos.implementation.{TestConfigurations, Utils}
-import com.azure.cosmos.models.ThroughputProperties
+import com.azure.cosmos.implementation.{SparkBridgeImplementationInternal, TestConfigurations, Utils}
+import com.azure.cosmos.models.{PartitionKey, PartitionKeyDefinition, ThroughputProperties}
 import com.azure.cosmos.spark.diagnostics.BasicLoggingTrait
 import org.apache.hadoop.fs.Path
+import org.scalatest.concurrent.TimeLimits
+import org.scalatest.time.{Minutes, Span}
 
 import java.nio.file.Paths
 import java.util.UUID
+import scala.jdk.CollectionConverters._
 
 class SparkE2EChangeFeedSplitITest
  extends IntegrationSpec
   with Spark
   with CosmosClient
   with CosmosContainer
-  with BasicLoggingTrait {
+  with BasicLoggingTrait
+  with TimeLimits {
 
  //scalastyle:off multiple.string.literals
  //scalastyle:off magic.number
@@ -122,11 +126,52 @@ class SparkE2EChangeFeedSplitITest
      .size()
    }
 
+   val splitContainer = separateClient
+    .getDatabase(cosmosDatabase)
+    .getContainer(cosmosContainer)
+   val childRanges = splitContainer.getFeedRanges.asScala
+    .map(SparkBridgeImplementationInternal.toNormalizedRange)
+    .sortBy(_.min)
+   val partitionKeyDefinition = splitContainer.read().getProperties.getPartitionKeyDefinition
+
+   for (sequenceNumber <- 51 to 100) {
+    val id = getPartitionKeyValueInRange(childRanges.head, partitionKeyDefinition)
+    val objectNode = Utils.getSimpleObjectMapper.createObjectNode()
+    objectNode.put("name", "Shrodigner's cat")
+    objectNode.put("type", "cat")
+    objectNode.put("age", 20)
+    objectNode.put("sequenceNumber", sequenceNumber)
+    objectNode.put("id", id)
+    splitContainer.createItem(objectNode)
+   }
+
    val cfgWithoutItemCountPerTriggerHint = cfg.filter(keyValuePair => !keyValuePair._1.equals("spark.cosmos.changeFeed.itemCountPerTriggerHint"))
    val df2 = spark.read.format("cosmos.oltp.changeFeed").options(cfgWithoutItemCountPerTriggerHint).load()
-   val rowsArray2 = df2.collect()
-   rowsArray2 should have size 50 - initialCount
+   val rowsArray2 = failAfter(Span(5, Minutes)) {
+    df2.collect()
+   }
+   rowsArray2 should have size 100 - initialCount
   }
+ }
+
+ private def getPartitionKeyValueInRange(
+   targetRange: NormalizedRange,
+   partitionKeyDefinition: PartitionKeyDefinition
+ ): String = {
+  var value = UUID.randomUUID().toString
+  var effectiveRange = SparkBridgeImplementationInternal.partitionKeyToNormalizedRange(
+   new PartitionKey(value),
+   partitionKeyDefinition)
+
+  while (effectiveRange.min.compareTo(targetRange.min) < 0 ||
+    effectiveRange.min.compareTo(targetRange.max) >= 0) {
+   value = UUID.randomUUID().toString
+   effectiveRange = SparkBridgeImplementationInternal.partitionKeyToNormalizedRange(
+    new PartitionKey(value),
+    partitionKeyDefinition)
+  }
+
+  value
  }
 
  //scalastyle:on magic.number

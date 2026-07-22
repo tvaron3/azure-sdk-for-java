@@ -4,7 +4,9 @@ package com.azure.cosmos.spark
 
 import com.azure.core.management.AzureEnvironment
 import com.azure.cosmos.changeFeedMetrics.ChangeFeedMetricsTracker
+import com.azure.cosmos.implementation.SparkBridgeImplementationInternal
 import com.azure.cosmos.{ReadConsistencyStrategy, spark}
+import org.apache.spark.sql.connector.read.streaming.ReadLimit
 
 import java.nio.charset.StandardCharsets
 import java.time.Instant
@@ -145,6 +147,46 @@ class PartitionMetadataSpec extends UnitSpec {
     viaCtor.lastUpdated.get shouldEqual viaCtor.lastRetrieved.get
     viaApply.lastUpdated.get should be >= nowEpochMs
     viaApply.lastUpdated.get shouldEqual viaApply.lastRetrieved.get
+  }
+
+  it should "preserve and plan every range from a composite FromNow continuation" in {
+    val lowerRange = NormalizedRange("", "AA")
+    val upperRange = NormalizedRange("AA", "FF")
+    val fromNowState = createChangeFeedState(
+      Seq(lowerRange -> 179L, upperRange -> 129L),
+      "INCREMENTAL")
+    val metadata = PartitionMetadata(
+      Map[String, String](),
+      clientCfg,
+      None,
+      contCfg,
+      NormalizedRange("", "FF"),
+      documentCount = 120,
+      totalDocumentSizeInKB = 120,
+      firstLsn = Some(1L),
+      fromNowContinuationToken = fromNowState,
+      startLsn = 2L)
+
+    metadata.latestLsn shouldEqual 179L
+
+    val splitMetadata = metadata.splitByLatestLsn()
+    splitMetadata.map(m => m.feedRange -> m.latestLsn) should contain theSameElementsInOrderAs
+      Seq(lowerRange -> 179L, upperRange -> 129L)
+
+    splitMetadata.foreach(m => {
+      m.fromNowContinuationState shouldBe defined
+      SparkBridgeImplementationInternal
+        .extractContinuationTokensFromChangeFeedStateJson(m.fromNowContinuationState.get)
+        .map(t => t._1 -> t._2) should contain only (m.feedRange -> m.latestLsn)
+    })
+
+    val planned = CosmosPartitionPlanner.calculateEndLsn(
+      splitMetadata.toArray,
+      ReadLimit.allAvailable(),
+      isChangeFeed = true)
+
+    planned.map(m => m.feedRange -> m.endLsn.get) should contain theSameElementsInOrderAs
+      Seq(lowerRange -> 179L, upperRange -> 129L)
   }
 
   it should "create instance with valid parameters via apply in full fidelity mode" in {
@@ -1109,8 +1151,20 @@ class PartitionMetadataSpec extends UnitSpec {
   //scalastyle:on null
   //scalastyle:on multiple.string.literals
 
-  private[this] def createChangeFeedState(latestLsn: Long, mode: String) = {
+  private[this] def createChangeFeedState(latestLsn: Long, mode: String): String = {
+    createChangeFeedState(Seq(NormalizedRange("", "FF") -> latestLsn), mode)
+  }
+
+  private[this] def createChangeFeedState(
+    latestLsns: Seq[(NormalizedRange, Long)],
+    mode: String
+  ): String = {
     val collectionRid = UUID.randomUUID().toString
+    val continuationTokens = latestLsns
+      .map(rangeAndLsn =>
+        s"""{"token":"\\"${rangeAndLsn._2}\\"","range":""" +
+          s"""{"min":"${rangeAndLsn._1.min}","max":"${rangeAndLsn._1.max}"}}""")
+      .mkString(",")
 
     val json = String.format(
       "{\"V\":1," +
@@ -1121,14 +1175,12 @@ class PartitionMetadataSpec extends UnitSpec {
       collectionRid,
       mode,
       String.format(
-        "{\"V\":1," +
-          "\"Rid\":\"%s\"," +
-          "\"Continuation\":[" +
-          "{\"token\":\"\\\"%s\\\"\",\"range\":{\"min\":\"\",\"max\":\"FF\"}}" +
-          "]," +
-          "\"PKRangeId\":\"0\"}",
-        collectionRid,
-        String.valueOf(latestLsn)))
+      "{\"V\":1," +
+        "\"Rid\":\"%s\"," +
+        "\"Continuation\":[%s]," +
+        "\"Range\":{\"min\":\"\",\"max\":\"FF\"}}",
+      collectionRid,
+      continuationTokens))
 
     Base64.getUrlEncoder.encodeToString(json.getBytes(StandardCharsets.UTF_8))
   }

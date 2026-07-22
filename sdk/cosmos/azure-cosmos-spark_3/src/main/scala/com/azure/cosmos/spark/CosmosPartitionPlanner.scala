@@ -834,10 +834,12 @@ private object CosmosPartitionPlanner extends BasicLoggingTrait {
                   0,
                   None,
                   new AtomicLong(0),
-                  new AtomicLong(0)
+                  new AtomicLong(0),
+                  None
                 ))
               })
           .collectSeq()
+          .map(metadata => metadata.flatMap(_.splitByLatestLsn()))
       })
       .block()
       .toArray
