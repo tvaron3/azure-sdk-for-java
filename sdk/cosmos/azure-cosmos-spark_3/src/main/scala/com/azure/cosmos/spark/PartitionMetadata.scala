@@ -170,11 +170,15 @@ private[cosmos] case class PartitionMetadata
               this.intersect(this.feedRange, rangeAndLsn._1)
                 .map(effectiveRange => effectiveRange -> rangeAndLsn._2))
             .toSeq
+          if (effectiveRangesAndLsns.length != latestLsnsByRange.length) {
+            throw new IllegalStateException(
+              s"FromNow continuation for range '${this.feedRange}' contained non-overlapping effective ranges.")
+          }
           val effectiveStates = SparkBridgeImplementationInternal.extractChangeFeedStateForRanges(
             parsedState,
             effectiveRangesAndLsns.map(_._1))
 
-          assert(
+          require(
             effectiveStates.length == effectiveRangesAndLsns.length,
             "Expected one continuation state for every effective range.")
 

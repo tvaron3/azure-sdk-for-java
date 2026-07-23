@@ -861,6 +861,13 @@ private object CosmosPartitionPlanner extends BasicLoggingTrait {
     isChangeFeed: Boolean
   ): Seq[PartitionMetadata] = {
     if (isChangeFeed) {
+      metadata.foreach(partitionMetadata => {
+        if (partitionMetadata.fromNowContinuationState.isEmpty && partitionMetadata.latestLsn > 0) {
+          logWarning(
+            s"Change-feed metadata for range '${partitionMetadata.feedRange}' is missing the FromNow continuation " +
+              "state; composite split expansion cannot be performed.")
+        }
+      })
       metadata.flatMap(_.splitByLatestLsn())
     } else {
       metadata

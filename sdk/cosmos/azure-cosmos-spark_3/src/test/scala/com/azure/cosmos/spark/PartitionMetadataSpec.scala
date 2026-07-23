@@ -222,6 +222,28 @@ class PartitionMetadataSpec extends UnitSpec {
       contain only (lowerRange -> 179L)
   }
 
+  it should "reject composite FromNow ranges that do not intersect the metadata range" in {
+    val fromNowState = createChangeFeedState(
+      Seq(
+        NormalizedRange("", "55") -> 179L,
+        NormalizedRange("BB", "FF") -> 129L),
+      "INCREMENTAL")
+    val metadata = PartitionMetadata(
+      Map[String, String](),
+      clientCfg,
+      None,
+      contCfg,
+      NormalizedRange("", "AA"),
+      documentCount = 120,
+      totalDocumentSizeInKB = 120,
+      firstLsn = Some(1L),
+      fromNowContinuationToken = fromNowState,
+      startLsn = 2L)
+
+    val error = intercept[IllegalStateException](metadata.splitByLatestLsn())
+    error.getMessage should include ("contained non-overlapping effective ranges")
+  }
+
   it should "create instance with valid parameters via apply in full fidelity mode" in {
 
     val clientConfig = spark.CosmosClientConfiguration(

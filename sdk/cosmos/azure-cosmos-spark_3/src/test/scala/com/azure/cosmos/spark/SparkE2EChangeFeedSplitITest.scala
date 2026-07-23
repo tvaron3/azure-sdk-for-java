@@ -43,7 +43,7 @@ class SparkE2EChangeFeedSplitITest
 
    for (sequenceNumber <- 1 to 50) {
     val objectNode = Utils.getSimpleObjectMapper.createObjectNode()
-    objectNode.put("name", "Shrodigner's cat")
+    objectNode.put("name", "Schrodinger's cat")
     objectNode.put("type", "cat")
     objectNode.put("age", 20)
     objectNode.put("sequenceNumber", sequenceNumber)
@@ -122,7 +122,7 @@ class SparkE2EChangeFeedSplitITest
     for (sequenceNumber <- 51 to 100) {
      val id = getPartitionKeyValueInRange(childRanges.head, partitionKeyDefinition)
      val objectNode = Utils.getSimpleObjectMapper.createObjectNode()
-     objectNode.put("name", "Shrodigner's cat")
+     objectNode.put("name", "Schrodinger's cat")
      objectNode.put("type", "cat")
      objectNode.put("age", 20)
      objectNode.put("sequenceNumber", sequenceNumber)
@@ -299,31 +299,31 @@ class SparkE2EChangeFeedSplitITest
   var effectiveRange = SparkBridgeImplementationInternal.partitionKeyToNormalizedRange(
    new PartitionKey(value),
    partitionKeyDefinition)
- var attempts = 1
+  var attempts = 1
 
- while (!isPartitionKeyInRange(effectiveRange, targetRange) &&
+  while (!isPartitionKeyInRange(effectiveRange, targetRange) &&
    attempts < MaxPartitionKeySearchAttempts) {
 
-  attempts += 1
-  value = UUID.randomUUID().toString
-  effectiveRange = SparkBridgeImplementationInternal.partitionKeyToNormalizedRange(
+   attempts += 1
+   value = UUID.randomUUID().toString
+   effectiveRange = SparkBridgeImplementationInternal.partitionKeyToNormalizedRange(
    new PartitionKey(value),
    partitionKeyDefinition)
- }
+  }
 
- if (isPartitionKeyInRange(effectiveRange, targetRange)) {
-  value
- } else {
-  fail(s"Unable to find a partition key in range '$targetRange' after '$attempts' attempts.")
- }
+  if (isPartitionKeyInRange(effectiveRange, targetRange)) {
+   value
+  } else {
+   fail(s"Unable to find a partition key in range '$targetRange' after '$attempts' attempts.")
+  }
  }
 
  private def isPartitionKeyInRange(
   effectiveRange: NormalizedRange,
   targetRange: NormalizedRange
  ): Boolean = {
- effectiveRange.min.compareTo(targetRange.min) >= 0 &&
-  effectiveRange.min.compareTo(targetRange.max) < 0
+  effectiveRange.min.compareTo(targetRange.min) >= 0 &&
+   effectiveRange.min.compareTo(targetRange.max) < 0
  }
 
  //scalastyle:on magic.number
