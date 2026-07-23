@@ -146,16 +146,18 @@ public class ReadFeedOffersTest extends TestSuiteBase {
     }
 
     public DocumentCollection createCollections(AsyncDocumentClient client) {
-        DocumentCollection collection = new DocumentCollection();
-        collection.setId(UUID.randomUUID().toString());
+        return executeControlPlaneWithRetry(() -> {
+            DocumentCollection collection = new DocumentCollection();
+            collection.setId(UUID.randomUUID().toString());
 
-        PartitionKeyDefinition partitionKeyDef = new PartitionKeyDefinition();
-        ArrayList<String> paths = new ArrayList<String>();
-        paths.add("/mypk");
-        partitionKeyDef.setPaths(paths);
-        collection.setPartitionKey(partitionKeyDef);
+            PartitionKeyDefinition partitionKeyDef = new PartitionKeyDefinition();
+            ArrayList<String> paths = new ArrayList<String>();
+            paths.add("/mypk");
+            partitionKeyDef.setPaths(paths);
+            collection.setPartitionKey(partitionKeyDef);
 
-        return client.createCollection(getDatabaseLink(), collection, null).block().getResource();
+            return client.createCollection(getDatabaseLink(), collection, null).block().getResource();
+        });
     }
 
     private String getDatabaseLink() {

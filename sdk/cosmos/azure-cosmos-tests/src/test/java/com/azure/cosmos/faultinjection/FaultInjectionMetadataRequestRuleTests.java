@@ -48,6 +48,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -611,8 +612,9 @@ public class FaultInjectionMetadataRequestRuleTests extends FaultInjectionTestBa
                 long ruleHitCount = pkRangesConnectionDelayRule.getHitCount();
                 assertThat(ruleHitCount).isGreaterThan(0);
                 // The PkRanges requests may have retried in another region,
-                // but the create request will only be retried locally for PARTITION_IS_SPLITTING
-                assertThat(cosmosDiagnostics.getContactedRegionNames().size()).isEqualTo(1);
+                // and connection delays may mark the first region unavailable before the create succeeds.
+                assertThat(cosmosDiagnostics.getContactedRegionNames().contains(
+                    this.writePreferredLocations.get(0).toLowerCase(Locale.ROOT))).isTrue();
 
                 // validate PARTITION_KEY_RANGE_LOOK_UP
                 ObjectNode diagnosticsNode = (ObjectNode) Utils.getSimpleObjectMapper().readTree(cosmosDiagnostics.toString());
