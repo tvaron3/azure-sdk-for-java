@@ -690,6 +690,36 @@ class CosmosPartitionPlannerSpec extends UnitSpec {
       isChangeFeed = true)
     changeFeedMetadata.map(m => m.feedRange -> m.latestLsn) should contain theSameElementsInOrderAs
       Seq(ranges(0) -> 180L, ranges(1) -> 160L, ranges(2) -> 130L)
+    changeFeedMetadata.map(_.documentCount).sum shouldEqual 0L
+    changeFeedMetadata.map(_.totalDocumentSizeInKB).sum shouldEqual 0L
+    changeFeedMetadata.foreach(_.firstLsn shouldBe empty)
+  }
+
+  it should "exclude out-of-scope split children before allocating ReadMaxRows" in {
+    val includedRange = NormalizedRange("", "AA")
+    val excludedRange = NormalizedRange("AA", "FF")
+    val state = createChangeFeedState(Seq(
+      includedRange -> 180L,
+      excludedRange -> 1000L))
+    val metadata = createMetadata(
+      NormalizedRange("", "FF"),
+      latestLsn = 180L,
+      startLsn = 100L,
+      fromNowContinuationState = Some(state))
+    val expandedMetadata = CosmosPartitionPlanner.expandPartitionMetadataByLatestLsn(
+      Seq(metadata),
+      isChangeFeed = true)
+
+    val filteredMetadata = CosmosPartitionPlanner.filterPartitionMetadataByFeedRanges(
+      expandedMetadata,
+      Some(Array(includedRange)))
+    filteredMetadata.map(_.feedRange) should contain only includedRange
+
+    val planned = CosmosPartitionPlanner.calculateEndLsn(
+      filteredMetadata.toArray,
+      ReadLimit.maxRows(10),
+      isChangeFeed = true)
+    planned.map(m => m.feedRange -> m.endLsn.get) should contain only (includedRange -> 110L)
   }
 
   it should "reconcile split metadata and preserve v1 offsets with ReadAllAvailable" in {

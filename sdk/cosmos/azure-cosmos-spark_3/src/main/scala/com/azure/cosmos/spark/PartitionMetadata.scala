@@ -266,9 +266,9 @@ private[cosmos] case class PartitionMetadata
       this.cosmosClientStateHandles,
       this.cosmosContainerConfig,
       effectiveRange,
-      this.documentCount,
-      this.totalDocumentSizeInKB,
-      this.firstLsn,
+      0,
+      0,
+      None,
       effectiveLatestLsn,
       this.startLsn,
       this.endLsn,
@@ -281,10 +281,15 @@ private[cosmos] case class PartitionMetadata
   private def getFromNowContinuationStateForRange(
     effectiveRange: NormalizedRange
   ): Option[String] = {
-    this.fromNowContinuationState.map(state =>
-      SparkBridgeImplementationInternal.extractChangeFeedStateForRange(
-        SparkBridgeImplementationInternal.parseChangeFeedState(state),
-        effectiveRange))
+    this.fromNowContinuationState.map(state => {
+      if (effectiveRange == this.feedRange) {
+        state
+      } else {
+        SparkBridgeImplementationInternal.extractChangeFeedStateForRange(
+          SparkBridgeImplementationInternal.parseChangeFeedState(state),
+          effectiveRange)
+      }
+    })
   }
 
   private def intersect(

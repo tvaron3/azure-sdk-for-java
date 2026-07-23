@@ -173,6 +173,11 @@ class PartitionMetadataSpec extends UnitSpec {
     val splitMetadata = metadata.splitByLatestLsn()
     splitMetadata.map(m => m.feedRange -> m.latestLsn) should contain theSameElementsInOrderAs
       Seq(lowerRange -> 179L, middleRange -> 159L, upperRange -> 129L)
+    splitMetadata.foreach(m => {
+      m.documentCount shouldEqual 0
+      m.totalDocumentSizeInKB shouldEqual 0
+      m.firstLsn shouldBe empty
+    })
 
     splitMetadata.foreach(m => {
       m.fromNowContinuationState shouldBe defined
@@ -188,6 +193,33 @@ class PartitionMetadataSpec extends UnitSpec {
 
     planned.map(m => m.feedRange -> m.endLsn.get) should contain theSameElementsInOrderAs
       Seq(lowerRange -> 179L, middleRange -> 159L, upperRange -> 129L)
+  }
+
+  it should "reuse FromNow state for the same range and project it for a subrange" in {
+    val lowerRange = NormalizedRange("", "AA")
+    val upperRange = NormalizedRange("AA", "FF")
+    val fromNowState = createChangeFeedState(
+      Seq(lowerRange -> 179L, upperRange -> 129L),
+      "INCREMENTAL")
+    val metadata = PartitionMetadata(
+      Map[String, String](),
+      clientCfg,
+      None,
+      contCfg,
+      NormalizedRange("", "FF"),
+      documentCount = 120,
+      totalDocumentSizeInKB = 120,
+      firstLsn = Some(1L),
+      fromNowContinuationToken = fromNowState,
+      startLsn = 2L)
+
+    val sameRangeClone = metadata.cloneForSubRange(metadata.feedRange, 3L)
+    sameRangeClone.fromNowContinuationState shouldEqual Some(fromNowState)
+
+    val subRangeClone = metadata.cloneForSubRange(lowerRange, 3L)
+    SparkBridgeImplementationInternal
+      .extractContinuationTokensFromChangeFeedStateJson(subRangeClone.fromNowContinuationState.get) should
+      contain only (lowerRange -> 179L)
   }
 
   it should "create instance with valid parameters via apply in full fidelity mode" in {

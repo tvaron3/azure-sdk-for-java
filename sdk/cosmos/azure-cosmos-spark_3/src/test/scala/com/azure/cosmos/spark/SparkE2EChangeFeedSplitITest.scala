@@ -7,12 +7,12 @@ import com.azure.cosmos.implementation.{SparkBridgeImplementationInternal, TestC
 import com.azure.cosmos.models.{PartitionKey, PartitionKeyDefinition, ThroughputProperties}
 import com.azure.cosmos.spark.diagnostics.BasicLoggingTrait
 import org.apache.hadoop.fs.Path
-import org.apache.spark.sql.Row
-import org.scalatest.concurrent.TimeLimits
-import org.scalatest.time.{Minutes, Span}
+import org.apache.spark.sql.{DataFrame, Row}
 
 import java.nio.file.Paths
 import java.util.UUID
+import java.util.concurrent.{Callable, ExecutionException, Executors, ThreadFactory, TimeUnit, TimeoutException}
+import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 
 class SparkE2EChangeFeedSplitITest
@@ -20,11 +20,13 @@ class SparkE2EChangeFeedSplitITest
   with Spark
   with CosmosClient
   with CosmosContainer
-  with BasicLoggingTrait
-  with TimeLimits {
+  with BasicLoggingTrait {
 
  //scalastyle:off multiple.string.literals
  //scalastyle:off magic.number
+ private val MaxSplitWaitAttempts = 300
+ private val MaxPartitionKeySearchAttempts = 100000
+ private val TestTimeoutInMinutes = 5L
 
  "spark change feed query (incremental)" should "honor checkpoint location and read limit after partition split" in {
   val cosmosEndpoint = TestConfigurations.HOST
@@ -64,7 +66,7 @@ class SparkE2EChangeFeedSplitITest
    )
 
    val df1 = spark.read.format("cosmos.oltp.changeFeed").options(cfg).load()
-   val rowsArray1 = df1.collect()
+   val rowsArray1 = collectWithTimeout(df1, "initial bounded change feed batch")
    // technically possible that even with 50 documents randomly distributed across 3 partitions some
    // has no documents
    // rowsArray should have size df.rdd.getNumPartitions
@@ -113,26 +115,7 @@ class SparkE2EChangeFeedSplitITest
 
     response.getStatusCode shouldEqual 200
 
-    val (splitParent, childRanges) = failAfter(Span(5, Minutes)) {
-     var splitResult = Option.empty[(NormalizedRange, Seq[NormalizedRange])]
-
-     while (splitResult.isEmpty) {
-      val currentRanges = splitContainer.getFeedRanges.asScala
-       .map(SparkBridgeImplementationInternal.toNormalizedRange)
-       .sortBy(_.min)
-       .toSeq
-      splitResult = initialFeedRanges
-       .map(parent => parent -> currentRanges.filter(child => isStrictSubRange(parent, child)))
-       .find(_._2.size >= 2)
-
-      if (splitResult.isEmpty) {
-       logInfo("Offer replace still pending a split of one cached parent range - waiting for 1 second...")
-       Thread.sleep(1000)
-      }
-     }
-
-     splitResult.get
-    }
+    val (splitParent, childRanges) = waitForSplit(splitContainer, initialFeedRanges)
     logInfo(s"Cached parent '$splitParent' split into '${childRanges.mkString(",")}'.")
     val partitionKeyDefinition = splitContainer.read().getProperties.getPartitionKeyDefinition
 
@@ -149,18 +132,148 @@ class SparkE2EChangeFeedSplitITest
 
     val cfgWithoutItemCountPerTriggerHint = cfg.filter(
      keyValuePair => !keyValuePair._1.equals("spark.cosmos.changeFeed.itemCountPerTriggerHint"))
-    val df2 = spark.read.format("cosmos.oltp.changeFeed").options(cfgWithoutItemCountPerTriggerHint).load()
-    val rowsArray2 = failAfter(Span(5, Minutes)) {
-     df2.collect()
-    }
-    val secondBatchSequenceNumbers = getSequenceNumbers(rowsArray2)
     val expectedSecondBatchSequenceNumbers = (1 to 100).toSet -- firstBatchSequenceNumbers.toSet
-    secondBatchSequenceNumbers.distinct.size shouldEqual secondBatchSequenceNumbers.size
+    val secondBatchSequenceNumbers = mutable.ArrayBuffer.empty[Int]
+    val postSplitDeadline = System.nanoTime() + TimeUnit.MINUTES.toNanos(TestTimeoutInMinutes)
+    var postSplitBatchNumber = 0
+
+    while (secondBatchSequenceNumbers.toSet != expectedSecondBatchSequenceNumbers &&
+     System.nanoTime() < postSplitDeadline) {
+
+     postSplitBatchNumber += 1
+     val remainingNanos = Math.max(1L, postSplitDeadline - System.nanoTime())
+     val dataFrame = spark.read
+      .format("cosmos.oltp.changeFeed")
+      .options(cfgWithoutItemCountPerTriggerHint)
+      .load()
+     val rows = collectWithTimeout(
+      dataFrame,
+      s"post-split change feed batch '$postSplitBatchNumber'",
+      remainingNanos)
+     val batchSequenceNumbers = getSequenceNumbers(rows)
+     batchSequenceNumbers.distinct.size shouldEqual batchSequenceNumbers.size
+     secondBatchSequenceNumbers.toSet.intersect(batchSequenceNumbers.toSet) shouldBe empty
+     batchSequenceNumbers.toSet.subsetOf(expectedSecondBatchSequenceNumbers) shouldEqual true
+     secondBatchSequenceNumbers ++= batchSequenceNumbers
+
+     if (secondBatchSequenceNumbers.toSet != expectedSecondBatchSequenceNumbers) {
+      promoteLatestOffset(hdfs, latestOffsetFileLocation, startOffsetFileLocation)
+     }
+    }
+
     secondBatchSequenceNumbers.toSet shouldEqual expectedSecondBatchSequenceNumbers
    } finally {
     separateClient.close()
    }
   }
+ }
+
+ private def waitForSplit(
+   splitContainer: com.azure.cosmos.CosmosContainer,
+   initialFeedRanges: Seq[NormalizedRange]
+ ): (NormalizedRange, Seq[NormalizedRange]) = {
+  val deadline = System.nanoTime() + TimeUnit.MINUTES.toNanos(TestTimeoutInMinutes)
+  var attempts = 0
+  var currentRanges = Seq.empty[NormalizedRange]
+  var splitResult = Option.empty[(NormalizedRange, Seq[NormalizedRange])]
+
+  while (splitResult.isEmpty &&
+    attempts < MaxSplitWaitAttempts &&
+    System.nanoTime() < deadline) {
+
+   attempts += 1
+   currentRanges = splitContainer.getFeedRanges.asScala
+    .map(SparkBridgeImplementationInternal.toNormalizedRange)
+    .sortBy(_.min)
+    .toSeq
+   splitResult = initialFeedRanges
+    .map(parent => parent -> currentRanges.filter(child => isStrictSubRange(parent, child)))
+    .find(_._2.size >= 2)
+
+   if (splitResult.isEmpty && attempts < MaxSplitWaitAttempts && System.nanoTime() < deadline) {
+    logInfo("Offer replace still pending a split of one cached parent range - waiting for 1 second...")
+    Thread.sleep(1000)
+   }
+  }
+
+  splitResult.getOrElse(
+   fail(s"No cached parent range split after '$attempts' attempts. " +
+    s"Initial ranges: '${initialFeedRanges.mkString(",")}', current ranges: '${currentRanges.mkString(",")}'."))
+ }
+
+ private def collectWithTimeout(
+   dataFrame: DataFrame,
+   operation: String,
+   timeoutNanos: Long = TimeUnit.MINUTES.toNanos(TestTimeoutInMinutes)
+ ): Array[Row] = {
+  val jobGroupId = s"spark-change-feed-split-${UUID.randomUUID()}"
+  val collectExecutor = Executors.newSingleThreadExecutor(new ThreadFactory {
+   override def newThread(runnable: Runnable): Thread = {
+    val thread = new Thread(runnable, s"$jobGroupId-worker")
+    thread.setDaemon(true)
+    thread
+   }
+  })
+  val collectFuture = collectExecutor.submit(new Callable[Array[Row]] {
+   override def call(): Array[Row] = {
+    spark.sparkContext.setJobGroup(jobGroupId, operation, interruptOnCancel = true)
+    try {
+     dataFrame.collect()
+    } finally {
+     spark.sparkContext.clearJobGroup()
+    }
+   }
+  })
+  var restoreInterrupt = false
+
+  try {
+   collectFuture.get(timeoutNanos, TimeUnit.NANOSECONDS)
+  } catch {
+   case _: TimeoutException =>
+    spark.sparkContext.cancelJobGroup(jobGroupId)
+    collectFuture.cancel(true)
+    fail(s"Timed out while running '$operation'.")
+   case error: InterruptedException =>
+    spark.sparkContext.cancelJobGroup(jobGroupId)
+    collectFuture.cancel(true)
+    restoreInterrupt = true
+    throw error
+   case error: ExecutionException =>
+    error.getCause match {
+     case runtimeException: RuntimeException => throw runtimeException
+     case fatalError: Error => throw fatalError
+     case cause => throw new RuntimeException(cause)
+    }
+  } finally {
+   collectExecutor.shutdownNow()
+   try {
+    if (!collectExecutor.awaitTermination(30, TimeUnit.SECONDS)) {
+     logWarning(s"Collection worker for '$operation' did not terminate within 30 seconds.")
+    }
+   } catch {
+    case _: InterruptedException =>
+     restoreInterrupt = true
+   }
+   if (restoreInterrupt) {
+    Thread.currentThread().interrupt()
+   }
+  }
+ }
+
+ private def promoteLatestOffset(
+   hdfs: org.apache.hadoop.fs.FileSystem,
+   latestOffsetFileLocation: String,
+   startOffsetFileLocation: String
+ ): Unit = {
+  val latestOffsetPath = new Path(latestOffsetFileLocation)
+  val startOffsetPath = new Path(startOffsetFileLocation)
+  hdfs.exists(latestOffsetPath) shouldEqual true
+  if (hdfs.exists(startOffsetPath)) {
+   hdfs.delete(startOffsetPath, false) shouldEqual true
+  }
+  hdfs.copyToLocalFile(true, latestOffsetPath, startOffsetPath)
+  hdfs.exists(latestOffsetPath) shouldEqual false
+  hdfs.exists(startOffsetPath) shouldEqual true
  }
 
  private def getSequenceNumbers(rows: Array[Row]): Seq[Int] = {
@@ -186,16 +299,31 @@ class SparkE2EChangeFeedSplitITest
   var effectiveRange = SparkBridgeImplementationInternal.partitionKeyToNormalizedRange(
    new PartitionKey(value),
    partitionKeyDefinition)
+ var attempts = 1
 
-  while (effectiveRange.min.compareTo(targetRange.min) < 0 ||
-    effectiveRange.min.compareTo(targetRange.max) >= 0) {
-   value = UUID.randomUUID().toString
-   effectiveRange = SparkBridgeImplementationInternal.partitionKeyToNormalizedRange(
-    new PartitionKey(value),
-    partitionKeyDefinition)
-  }
+ while (!isPartitionKeyInRange(effectiveRange, targetRange) &&
+   attempts < MaxPartitionKeySearchAttempts) {
 
+  attempts += 1
+  value = UUID.randomUUID().toString
+  effectiveRange = SparkBridgeImplementationInternal.partitionKeyToNormalizedRange(
+   new PartitionKey(value),
+   partitionKeyDefinition)
+ }
+
+ if (isPartitionKeyInRange(effectiveRange, targetRange)) {
   value
+ } else {
+  fail(s"Unable to find a partition key in range '$targetRange' after '$attempts' attempts.")
+ }
+ }
+
+ private def isPartitionKeyInRange(
+  effectiveRange: NormalizedRange,
+  targetRange: NormalizedRange
+ ): Boolean = {
+ effectiveRange.min.compareTo(targetRange.min) >= 0 &&
+  effectiveRange.min.compareTo(targetRange.max) < 0
  }
 
  //scalastyle:on magic.number

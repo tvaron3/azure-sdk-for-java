@@ -847,7 +847,10 @@ private object CosmosPartitionPlanner extends BasicLoggingTrait {
                 ))
               })
           .collectSeq()
-          .map(metadata => expandPartitionMetadataByLatestLsn(metadata, isChangeFeed))
+          .map(metadata =>
+            filterPartitionMetadataByFeedRanges(
+              expandPartitionMetadataByLatestLsn(metadata, isChangeFeed),
+              partitionConfig.feedRangeFiler))
       })
       .block()
       .toArray
@@ -861,6 +864,19 @@ private object CosmosPartitionPlanner extends BasicLoggingTrait {
       metadata.flatMap(_.splitByLatestLsn())
     } else {
       metadata
+    }
+  }
+
+  private[spark] def filterPartitionMetadataByFeedRanges(
+    metadata: Seq[PartitionMetadata],
+    feedRangeFilter: Option[Array[NormalizedRange]]
+  ): Seq[PartitionMetadata] = {
+    feedRangeFilter match {
+      case Some(epkRangesInScope) =>
+        metadata.filter(partitionMetadata =>
+          epkRangesInScope.exists(epk =>
+            SparkBridgeImplementationInternal.doRangesOverlap(epk, partitionMetadata.feedRange)))
+      case None => metadata
     }
   }
 }
