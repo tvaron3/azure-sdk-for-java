@@ -760,8 +760,13 @@ public abstract class TestSuiteBase extends CosmosAsyncClientTest {
 
         logger.info("afterSuite Started");
 
+        if (SHARED_DATABASE == null) {
+            logger.info("No shared database was created; skipping live-test cleanup.");
+            return;
+        }
+
         try (CosmosAsyncClient houseKeepingClient = createGatewayHouseKeepingDocumentClient(true).buildAsyncClient()) {
-            String sharedDatabaseId = SHARED_DATABASE == null ? null : SHARED_DATABASE.getId();
+            String sharedDatabaseId = SHARED_DATABASE.getId();
             safeDeleteDatabase(SHARED_DATABASE);
             waitForDatabaseDeletion(houseKeepingClient, sharedDatabaseId);
         }
