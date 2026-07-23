@@ -8,6 +8,7 @@ import com.azure.cosmos.CosmosException;
 import com.azure.cosmos.implementation.ApiType;
 import com.azure.cosmos.implementation.AuthorizationTokenType;
 import com.azure.cosmos.implementation.BackoffRetryUtility;
+import com.azure.cosmos.implementation.CaeRetryPolicy;
 import com.azure.cosmos.implementation.Configs;
 import com.azure.cosmos.implementation.ConnectionPolicy;
 import com.azure.cosmos.implementation.Constants;
@@ -360,9 +361,12 @@ public class GatewayAddressCache implements IAddressCache {
         request.setAddressRefresh(true, forceRefresh);
         MetadataRequestRetryPolicy metadataRequestRetryPolicy = new MetadataRequestRetryPolicy(globalEndpointManager);
         metadataRequestRetryPolicy.onBeforeSendRequest(request);
+        CaeRetryPolicy caeRetryPolicy = new CaeRetryPolicy(metadataRequestRetryPolicy, this.tokenProvider);
+        caeRetryPolicy.onBeforeSendRequest(request);
 
         return BackoffRetryUtility.executeRetry(() -> this.getServerAddressesViaGatewayInternalAsync(
-            request, collectionRid, partitionKeyRangeIds, forceRefresh), metadataRequestRetryPolicy);
+            request, collectionRid, partitionKeyRangeIds, forceRefresh),
+            caeRetryPolicy);
     }
 
     private Mono<List<Address>> getServerAddressesViaGatewayInternalAsync(RxDocumentServiceRequest request,
@@ -443,20 +447,29 @@ public class GatewayAddressCache implements IAddressCache {
         Mono<HttpResponse> httpResponseMono;
         if (tokenProvider.getAuthorizationTokenType() != AuthorizationTokenType.AadToken) {
             httpResponseMono = this.httpClient.send(httpRequest, request.getResponseTimeout());
-        } else {
-            httpResponseMono = tokenProvider
-                .populateAuthorizationHeader(httpHeaders)
-                .flatMap(valueHttpHeaders -> this.httpClient.send(httpRequest,request.getResponseTimeout()));
-        }
-
-        if (this.gatewayServerErrorInjector != null) {
-            httpResponseMono =
-                this.gatewayServerErrorInjector.injectGatewayErrors(
+            if (this.gatewayServerErrorInjector != null) {
+                httpResponseMono = this.gatewayServerErrorInjector.injectGatewayErrors(
                     request.getResponseTimeout(),
                     httpRequest,
                     request,
                     httpResponseMono,
                     partitionKeyRangeIds);
+            }
+        } else {
+            httpResponseMono = tokenProvider
+                .populateAuthorizationHeader(httpHeaders, request)
+                .flatMap(valueHttpHeaders -> {
+                    Mono<HttpResponse> response =
+                        this.httpClient.send(httpRequest, request.getResponseTimeout());
+                    return this.gatewayServerErrorInjector == null
+                        ? response
+                        : this.gatewayServerErrorInjector.injectGatewayErrors(
+                            request.getResponseTimeout(),
+                            httpRequest,
+                            request,
+                            response,
+                            partitionKeyRangeIds);
+                });
         }
 
         Mono<RxDocumentServiceResponse> dsrObs = HttpClientUtils
@@ -767,9 +780,12 @@ public class GatewayAddressCache implements IAddressCache {
         request.setAddressRefresh(true, forceRefresh);
         MetadataRequestRetryPolicy metadataRequestRetryPolicy = new MetadataRequestRetryPolicy(globalEndpointManager);
         metadataRequestRetryPolicy.onBeforeSendRequest(request);
+        CaeRetryPolicy caeRetryPolicy = new CaeRetryPolicy(metadataRequestRetryPolicy, this.tokenProvider);
+        caeRetryPolicy.onBeforeSendRequest(request);
 
         return BackoffRetryUtility.executeRetry(() -> this.getMasterAddressesViaGatewayAsyncInternal(
-            request, resourceType, resourceAddress, entryUrl, forceRefresh, useMasterCollectionResolver, properties), metadataRequestRetryPolicy);
+            request, resourceType, resourceAddress, entryUrl, forceRefresh, useMasterCollectionResolver, properties),
+            caeRetryPolicy);
     }
 
     private Mono<List<Address>> getMasterAddressesViaGatewayAsyncInternal(
@@ -838,7 +854,7 @@ public class GatewayAddressCache implements IAddressCache {
                 request.getResponseTimeout());
         } else {
             httpResponseMono = tokenProvider
-                .populateAuthorizationHeader(defaultHttpHeaders)
+                .populateAuthorizationHeader(defaultHttpHeaders, request)
                 .flatMap(valueHttpHeaders -> this.httpClient.send(httpRequest,
                     request.getResponseTimeout()));
         }

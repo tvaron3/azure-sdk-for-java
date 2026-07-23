@@ -3,9 +3,7 @@
 package com.azure.cosmos.implementation;
 
 import com.azure.core.credential.AzureKeyCredential;
-import com.azure.core.credential.SimpleTokenCache;
 import com.azure.core.credential.TokenCredential;
-import com.azure.core.credential.TokenRequestContext;
 import com.azure.cosmos.BridgeInternal;
 import com.azure.cosmos.ConnectionMode;
 import com.azure.cosmos.ConsistencyLevel;
@@ -287,8 +285,7 @@ public class RxDocumentClientImpl implements AsyncDocumentClient, IAuthorization
     private final boolean connectionSharingAcrossClientsEnabled;
     private AzureKeyCredential credential;
     private final TokenCredential tokenCredential;
-    private String[] tokenCredentialScopes;
-    private SimpleTokenCache tokenCredentialCache;
+    private AadTokenAuthorizationHelper aadTokenAuthorizationHelper;
     private CosmosAuthorizationTokenResolver cosmosAuthorizationTokenResolver;
     AuthorizationTokenType authorizationTokenType;
     private ISessionContainer sessionContainer;
@@ -677,59 +674,13 @@ public class RxDocumentClientImpl implements AsyncDocumentClient, IAuthorization
                     String accountScope = serviceEndpoint.getScheme() + "://" + serviceEndpoint.getHost() + "/.default";
 
                     if (scopeOverride != null && !scopeOverride.isEmpty()) {
-                        // Use only the override scope; no fallback.
-                        this.tokenCredentialScopes = new String[] { scopeOverride };
-
-                        this.tokenCredentialCache = new SimpleTokenCache(() -> {
-                            final String primaryScope = this.tokenCredentialScopes[0];
-                            final TokenRequestContext ctx = new TokenRequestContext().addScopes(primaryScope);
-                            return this.tokenCredential.getToken(ctx)
-                                .doOnNext(t -> {
-                                    if (logger.isInfoEnabled()) {
-                                        logger.info("AAD token: acquired using override scope: {}", primaryScope);
-                                    }
-                                });
-                        });
+                        this.aadTokenAuthorizationHelper =
+                            new AadTokenAuthorizationHelper(this.tokenCredential, scopeOverride, null);
                     } else {
-                        // Account scope with fallback to default scope on AADSTS500011 error
-                        this.tokenCredentialScopes = new String[] { accountScope, Constants.AAD_DEFAULT_SCOPE };
-
-                        this.tokenCredentialCache = new SimpleTokenCache(() -> {
-                            final String primaryScope  = this.tokenCredentialScopes[0];
-                            final String fallbackScope = this.tokenCredentialScopes[1];
-
-                            final TokenRequestContext primaryCtx = new TokenRequestContext().addScopes(primaryScope);
-
-                            return this.tokenCredential.getToken(primaryCtx)
-                                .doOnNext(t -> {
-                                    if (logger.isInfoEnabled()) {
-                                        logger.info("AAD token: acquired using account scope: {}", primaryScope);
-                                    }
-                                })
-                                .onErrorResume(error -> {
-                                    final Throwable root = reactor.core.Exceptions.unwrap(error);
-                                    final String messageText = (root.getMessage() != null) ? root.getMessage() : "";
-                                    final boolean isAadAppNotFound = messageText.contains("AADSTS500011");
-
-                                    if (!isAadAppNotFound) {
-                                        return Mono.error(error);
-                                    }
-
-                                    if (logger.isWarnEnabled()) {
-                                        logger.warn(
-                                            "AAD token: account scope failed with AADSTS500011; retrying with fallback scope: {}",
-                                            fallbackScope);
-                                    }
-
-                                    final TokenRequestContext fallbackCtx = new TokenRequestContext().addScopes(fallbackScope);
-                                    return this.tokenCredential.getToken(fallbackCtx)
-                                        .doOnNext(t -> {
-                                            if (logger.isInfoEnabled()) {
-                                                logger.info("AAD token: acquired using fallback scope: {}", fallbackScope);
-                                            }
-                                        });
-                                });
-                        });
+                        this.aadTokenAuthorizationHelper = new AadTokenAuthorizationHelper(
+                            this.tokenCredential,
+                            accountScope,
+                            Constants.AAD_DEFAULT_SCOPE);
                     }
                     this.authorizationTokenType = AuthorizationTokenType.AadToken;
                 }
@@ -789,7 +740,8 @@ public class RxDocumentClientImpl implements AsyncDocumentClient, IAuthorization
                 this.globalEndpointManager,
                 this.connectionPolicy,
                 this.globalPartitionEndpointManagerForPerPartitionCircuitBreaker,
-                this.globalPartitionEndpointManagerForPerPartitionAutomaticFailover);
+                this.globalPartitionEndpointManagerForPerPartitionAutomaticFailover,
+                this);
             this.resetSessionTokenRetryPolicy = retryPolicy;
             CpuMemoryMonitor.register(this);
             this.queryPlanCache = new ConcurrentHashMap<>();
@@ -2708,8 +2660,14 @@ public class RxDocumentClientImpl implements AsyncDocumentClient, IAuthorization
             throw new IllegalArgumentException("request");
         }
 
+        String caeAuthorization = getCaeAuthorizationToken(request);
+        if (caeAuthorization != null) {
+            request.getHeaders().put(HttpConstants.HttpHeaders.AUTHORIZATION, caeAuthorization);
+            return Mono.just(request);
+        }
+
         if (this.authorizationTokenType == AuthorizationTokenType.AadToken) {
-            return AadTokenAuthorizationHelper.getAuthorizationToken(this.tokenCredentialCache)
+            return this.aadTokenAuthorizationHelper.getAuthorizationToken()
                 .map(authorization -> {
                     request.getHeaders().put(HttpConstants.HttpHeaders.AUTHORIZATION, authorization);
                     return request;
@@ -2726,7 +2684,7 @@ public class RxDocumentClientImpl implements AsyncDocumentClient, IAuthorization
         }
 
         if (this.authorizationTokenType == AuthorizationTokenType.AadToken) {
-            return AadTokenAuthorizationHelper.getAuthorizationToken(this.tokenCredentialCache)
+            return this.aadTokenAuthorizationHelper.getAuthorizationToken()
                 .map(authorization -> {
                     httpHeaders.set(HttpConstants.HttpHeaders.AUTHORIZATION, authorization);
                     return httpHeaders;
@@ -2734,6 +2692,32 @@ public class RxDocumentClientImpl implements AsyncDocumentClient, IAuthorization
         }
 
         return Mono.just(httpHeaders);
+    }
+
+    @Override
+    public Mono<HttpHeaders> populateAuthorizationHeader(HttpHeaders httpHeaders,
+        RxDocumentServiceRequest request) {
+        String caeAuthorization = getCaeAuthorizationToken(request);
+        if (caeAuthorization != null) {
+            httpHeaders.set(HttpConstants.HttpHeaders.AUTHORIZATION, caeAuthorization);
+            return Mono.just(httpHeaders);
+        }
+        return populateAuthorizationHeader(httpHeaders);
+    }
+
+    @Override
+    public Mono<String> getCaeAuthorizationToken(CosmosException cosmosException) {
+        if (this.authorizationTokenType != AuthorizationTokenType.AadToken) {
+            return Mono.empty();
+        }
+        return this.aadTokenAuthorizationHelper.getCaeAuthorizationToken(cosmosException);
+    }
+
+    private static String getCaeAuthorizationToken(RxDocumentServiceRequest request) {
+        if (request == null || request.requestContext == null) {
+            return null;
+        }
+        return request.requestContext.caeAuthorizationToken;
     }
 
     @Override
@@ -7411,6 +7395,26 @@ public class RxDocumentClientImpl implements AsyncDocumentClient, IAuthorization
     }
 
     public Flux<DatabaseAccount> getDatabaseAccountFromEndpoint(URI endpoint) {
+        return this.getDatabaseAccountFromEndpointInternal(endpoint)
+            .onErrorResume(throwable -> {
+                Throwable unwrappedException = reactor.core.Exceptions.unwrap(throwable);
+                CosmosException cosmosException = Utils.as(unwrappedException, CosmosException.class);
+                if (cosmosException == null) {
+                    return Flux.error(throwable);
+                }
+
+                return this.getCaeAuthorizationToken(cosmosException)
+                    .flatMapMany(authorization ->
+                        this.getDatabaseAccountFromEndpointInternal(endpoint, authorization))
+                    .switchIfEmpty(Flux.error(throwable));
+            });
+    }
+
+    Flux<DatabaseAccount> getDatabaseAccountFromEndpointInternal(URI endpoint) {
+        return this.getDatabaseAccountFromEndpointInternal(endpoint, null);
+    }
+
+    Flux<DatabaseAccount> getDatabaseAccountFromEndpointInternal(URI endpoint, String caeAuthorization) {
         return Flux.defer(() -> {
             RxDocumentServiceRequest request = RxDocumentServiceRequest.create(this,
                 OperationType.Read, ResourceType.DatabaseAccount, "", null, (Object) null);
@@ -7418,6 +7422,7 @@ public class RxDocumentClientImpl implements AsyncDocumentClient, IAuthorization
             if (this.thinClientConnectivityConfig.canThinClientBeUsed()) {
                 request.getHeaders().put(HttpConstants.HttpHeaders.THINCLIENT_OPT_IN, "true");
             }
+            request.requestContext.caeAuthorizationToken = caeAuthorization;
             return this.populateHeadersAsync(request, RequestVerb.GET)
                 .flatMap(requestPopulated -> {
 

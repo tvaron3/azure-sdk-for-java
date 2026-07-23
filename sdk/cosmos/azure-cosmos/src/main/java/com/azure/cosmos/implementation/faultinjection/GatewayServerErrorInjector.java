@@ -16,7 +16,6 @@ import com.azure.cosmos.implementation.caches.RxCollectionCache;
 import com.azure.cosmos.implementation.caches.RxPartitionKeyRangeCache;
 import com.azure.cosmos.implementation.http.HttpRequest;
 import com.azure.cosmos.implementation.http.HttpResponse;
-import com.azure.cosmos.implementation.http.ReactorNettyRequestRecord;
 import com.azure.cosmos.implementation.routing.PartitionKeyInternal;
 import com.azure.cosmos.implementation.routing.PartitionKeyInternalHelper;
 import io.netty.channel.ConnectTimeoutException;
@@ -24,7 +23,6 @@ import io.netty.handler.timeout.ReadTimeoutException;
 import io.netty.util.ReferenceCountUtil;
 import reactor.core.publisher.Mono;
 
-import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -142,8 +140,7 @@ public class GatewayServerErrorInjector {
                 Utils.ValueHolder<Duration> delayToBeInjected = new Utils.ValueHolder<>();
                 FaultInjectionRequestArgs faultInjectionRequestArgs =
                     this.createFaultInjectionRequestArgs(
-                        httpRequest.reactorNettyRequestRecord(),
-                        httpRequest.uri(),
+                        httpRequest,
                         serviceRequest,
                         partitionKeyRangeIds);
 
@@ -241,13 +238,16 @@ public class GatewayServerErrorInjector {
     }
 
     private GatewayFaultInjectionRequestArgs createFaultInjectionRequestArgs(
-        ReactorNettyRequestRecord requestRecord,
-        URI requestUri,
+        HttpRequest httpRequest,
         RxDocumentServiceRequest serviceRequest,
         List<String> partitionKeyRangeIds) {
+        String authorization = httpRequest.headers().value(HttpConstants.HttpHeaders.AUTHORIZATION);
+        if (authorization != null) {
+            serviceRequest.getHeaders().put(HttpConstants.HttpHeaders.AUTHORIZATION, authorization);
+        }
         return new GatewayFaultInjectionRequestArgs(
-            requestRecord.getTransportRequestId(),
-            requestUri,
+            httpRequest.reactorNettyRequestRecord().getTransportRequestId(),
+            httpRequest.uri(),
             serviceRequest,
             partitionKeyRangeIds);
     }

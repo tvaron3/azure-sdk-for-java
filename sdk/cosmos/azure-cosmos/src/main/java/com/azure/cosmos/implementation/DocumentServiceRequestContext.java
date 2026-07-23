@@ -57,6 +57,7 @@ public class DocumentServiceRequestContext implements Cloneable {
     public volatile PartitionKeyInternal effectivePartitionKey;
     public volatile CosmosDiagnostics cosmosDiagnostics;
     public volatile String resourcePhysicalAddress;
+    public volatile String caeAuthorizationToken;
     public ThroughputControlRequestContext throughputControlRequestContext;
     public volatile boolean replicaAddressValidationEnabled = Configs.isReplicaAddressValidationEnabled();
     private final Set<Uri> failedEndpoints = ConcurrentHashMap.newKeySet();
@@ -165,6 +166,7 @@ public class DocumentServiceRequestContext implements Cloneable {
         context.performedBackgroundAddressRefresh = this.performedBackgroundAddressRefresh;
         context.cosmosDiagnostics = this.cosmosDiagnostics;
         context.resourcePhysicalAddress = this.resourcePhysicalAddress;
+        context.caeAuthorizationToken = this.caeAuthorizationToken;
         context.throughputControlRequestContext = this.throughputControlRequestContext;
         context.replicaAddressValidationEnabled = this.replicaAddressValidationEnabled;
         context.endToEndOperationLatencyPolicyConfig = this.endToEndOperationLatencyPolicyConfig;
@@ -287,4 +289,3 @@ public class DocumentServiceRequestContext implements Cloneable {
         this.barrierType = barrierType;
     }
 }
-

@@ -21,6 +21,7 @@ public class RetryPolicy implements IRetryPolicyFactory {
     private final GlobalPartitionEndpointManagerForPerPartitionAutomaticFailover globalPartitionEndpointManagerForPerPartitionAutomaticFailover;
     private final boolean enableEndpointDiscovery;
     private final ThrottlingRetryOptions throttlingRetryOptions;
+    private final IAuthorizationTokenProvider authorizationTokenProvider;
     private RxCollectionCache rxCollectionCache;
 
     public RetryPolicy(
@@ -29,6 +30,22 @@ public class RetryPolicy implements IRetryPolicyFactory {
         ConnectionPolicy connectionPolicy,
         GlobalPartitionEndpointManagerForPerPartitionCircuitBreaker globalPartitionEndpointManagerForPerPartitionCircuitBreaker,
         GlobalPartitionEndpointManagerForPerPartitionAutomaticFailover globalPartitionEndpointManagerForPerPartitionAutomaticFailover) {
+        this(
+            diagnosticsClientContext,
+            globalEndpointManager,
+            connectionPolicy,
+            globalPartitionEndpointManagerForPerPartitionCircuitBreaker,
+            globalPartitionEndpointManagerForPerPartitionAutomaticFailover,
+            null);
+    }
+
+    public RetryPolicy(
+        DiagnosticsClientContext diagnosticsClientContext,
+        GlobalEndpointManager globalEndpointManager,
+        ConnectionPolicy connectionPolicy,
+        GlobalPartitionEndpointManagerForPerPartitionCircuitBreaker globalPartitionEndpointManagerForPerPartitionCircuitBreaker,
+        GlobalPartitionEndpointManagerForPerPartitionAutomaticFailover globalPartitionEndpointManagerForPerPartitionAutomaticFailover,
+        IAuthorizationTokenProvider authorizationTokenProvider) {
 
         this.diagnosticsClientContext = diagnosticsClientContext;
         this.enableEndpointDiscovery = connectionPolicy.isEndpointDiscoveryEnabled();
@@ -36,6 +53,7 @@ public class RetryPolicy implements IRetryPolicyFactory {
         this.throttlingRetryOptions = connectionPolicy.getThrottlingRetryOptions();
         this.globalPartitionEndpointManagerForPerPartitionCircuitBreaker = globalPartitionEndpointManagerForPerPartitionCircuitBreaker;
         this.globalPartitionEndpointManagerForPerPartitionAutomaticFailover = globalPartitionEndpointManagerForPerPartitionAutomaticFailover;
+        this.authorizationTokenProvider = authorizationTokenProvider;
     }
 
     @Override
@@ -61,7 +79,9 @@ public class RetryPolicy implements IRetryPolicyFactory {
             this.globalPartitionEndpointManagerForPerPartitionAutomaticFailover,
             disableRetryForThrottledBatchRequest);
 
-        return clientRetryPolicy;
+        return this.authorizationTokenProvider == null
+            ? clientRetryPolicy
+            : new CaeRetryPolicy(clientRetryPolicy, this.authorizationTokenProvider);
     }
 
     @Override

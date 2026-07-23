@@ -19,13 +19,18 @@ import com.azure.cosmos.implementation.RequestTimeoutException;
 import com.azure.cosmos.implementation.RetryWithException;
 import com.azure.cosmos.implementation.RxDocumentServiceRequest;
 import com.azure.cosmos.implementation.ServiceUnavailableException;
+import com.azure.cosmos.implementation.UnauthorizedException;
 import com.azure.cosmos.implementation.apachecommons.lang.StringUtils;
 import com.azure.cosmos.implementation.directconnectivity.WFConstants;
 import com.azure.cosmos.test.faultinjection.FaultInjectionServerErrorType;
 
 import java.time.Duration;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static com.azure.cosmos.implementation.guava25.base.Preconditions.checkArgument;
 
@@ -36,6 +41,7 @@ public class FaultInjectionServerErrorResultInternal {
 
     private final Boolean suppressServiceRequests;
     private final double injectionRate;
+    private final AtomicReference<String> revokedAuthorizationToken = new AtomicReference<>();
 
 
     public FaultInjectionServerErrorResultInternal(
@@ -74,7 +80,18 @@ public class FaultInjectionServerErrorResultInternal {
     }
 
     public boolean isApplicable(String ruleId, RxDocumentServiceRequest request) {
-        return this.times == null || request.faultInjectionRequestContext.getFaultInjectionRuleApplyCount(ruleId) < this.times;
+        if (this.times != null
+            && request.faultInjectionRequestContext.getFaultInjectionRuleApplyCount(ruleId) >= this.times) {
+            return false;
+        }
+
+        if (this.serverErrorType != FaultInjectionServerErrorType.AAD_TOKEN_REVOKED) {
+            return true;
+        }
+
+        String authorizationToken = request.getHeaders().get(HttpConstants.HttpHeaders.AUTHORIZATION);
+        this.revokedAuthorizationToken.compareAndSet(null, authorizationToken);
+        return Objects.equals(this.revokedAuthorizationToken.get(), authorizationToken);
     }
 
     // IMPORTANT: Please keep the behavior be consistent with RequestManager
@@ -188,7 +205,12 @@ public class FaultInjectionServerErrorResultInternal {
                     Integer.toString(HttpConstants.SubStatusCodes.LEASE_NOT_FOUND));
                 cosmosException = new LeaseNotFoundException(null, lsn, partitionKeyRangeId, responseHeaders);
                 break;
-
+            case AAD_TOKEN_REVOKED:
+                responseHeaders.put(
+                    HttpConstants.HttpHeaders.WWW_AUTHENTICATE,
+                    this.createCaeChallenge());
+                cosmosException = new UnauthorizedException(null, lsn, partitionKeyRangeId, responseHeaders);
+                break;
             default:
                 throw new IllegalArgumentException("Server error type " + this.serverErrorType + " is not supported");
         }
@@ -220,5 +242,12 @@ public class FaultInjectionServerErrorResultInternal {
 
     private String getErrorMessage(String errorMessage) {
         return String.format("Fault injection server error [%s]", errorMessage);
+    }
+
+    private String createCaeChallenge() {
+        String claims = "{\"access_token\":{\"nbf\":{\"essential\":false,\"value\":\"1\"}}}";
+        String encodedClaims = Base64.getEncoder().encodeToString(claims.getBytes(StandardCharsets.UTF_8));
+        return "Bearer realm=\"\", authorization_uri=\"\", error=\"insufficient_claims\", claims=\""
+            + encodedClaims + "\"";
     }
 }

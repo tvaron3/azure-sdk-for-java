@@ -130,6 +130,14 @@ public final class FaultInjectionRuleBuilder {
             throw new IllegalArgumentException("Argument 'result' can not be null");
         }
 
+        if (this.result instanceof FaultInjectionServerErrorResult
+            && ((FaultInjectionServerErrorResult) this.result).getServerErrorType()
+                == FaultInjectionServerErrorType.AAD_TOKEN_REVOKED
+            && this.condition.getConnectionType() != FaultInjectionConnectionType.GATEWAY) {
+            throw new IllegalArgumentException(
+                "AAD_TOKEN_REVOKED can only be injected for rules with gateway connection type");
+        }
+
         if (this.condition.getConnectionType() == FaultInjectionConnectionType.GATEWAY) {
             this.validateRuleOnGatewayConnection();
         }
@@ -179,7 +187,8 @@ public final class FaultInjectionRuleBuilder {
     private boolean isSupportedMetadataServerErrorType(FaultInjectionServerErrorType serverErrorType) {
         if (serverErrorType == FaultInjectionServerErrorType.TOO_MANY_REQUEST
             || serverErrorType == FaultInjectionServerErrorType.RESPONSE_DELAY
-            || serverErrorType == FaultInjectionServerErrorType.CONNECTION_DELAY) {
+            || serverErrorType == FaultInjectionServerErrorType.CONNECTION_DELAY
+            || serverErrorType == FaultInjectionServerErrorType.AAD_TOKEN_REVOKED) {
             return true;
         }
 

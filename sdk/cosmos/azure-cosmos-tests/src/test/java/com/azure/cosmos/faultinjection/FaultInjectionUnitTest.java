@@ -2,6 +2,11 @@
 // Licensed under the MIT License.
 package com.azure.cosmos.faultinjection;
 
+import com.azure.cosmos.implementation.HttpConstants;
+import com.azure.cosmos.implementation.OperationType;
+import com.azure.cosmos.implementation.ResourceType;
+import com.azure.cosmos.implementation.RxDocumentServiceRequest;
+import com.azure.cosmos.implementation.TestUtils;
 import com.azure.cosmos.test.faultinjection.FaultInjectionCondition;
 import com.azure.cosmos.test.faultinjection.FaultInjectionConditionBuilder;
 import com.azure.cosmos.test.faultinjection.FaultInjectionConnectionErrorType;
@@ -11,6 +16,7 @@ import com.azure.cosmos.test.faultinjection.FaultInjectionResultBuilders;
 import com.azure.cosmos.test.faultinjection.FaultInjectionRule;
 import com.azure.cosmos.test.faultinjection.FaultInjectionRuleBuilder;
 import com.azure.cosmos.test.faultinjection.FaultInjectionServerErrorType;
+import com.azure.cosmos.test.implementation.faultinjection.FaultInjectionServerErrorResultInternal;
 import org.assertj.core.api.Assertions;
 import org.testng.annotations.Test;
 
@@ -47,6 +53,27 @@ public class FaultInjectionUnitTest {
     }
 
     @Test(groups = "unit")
+    public void aadTokenRevocationOnlyAppliesToChallengedToken() {
+        FaultInjectionServerErrorResultInternal result = new FaultInjectionServerErrorResultInternal(
+            FaultInjectionServerErrorType.AAD_TOKEN_REVOKED,
+            Integer.MAX_VALUE,
+            null,
+            null,
+            1);
+        RxDocumentServiceRequest request = RxDocumentServiceRequest.createFromName(
+            TestUtils.mockDiagnosticsClientContext(),
+            OperationType.Create,
+            "/dbs/db/colls/coll/docs/doc",
+            ResourceType.Document);
+        request.getHeaders().put(HttpConstants.HttpHeaders.AUTHORIZATION, "revoked-token");
+
+        Assertions.assertThat(result.isApplicable("rule", request)).isTrue();
+
+        request.getHeaders().put(HttpConstants.HttpHeaders.AUTHORIZATION, "refreshed-token");
+        Assertions.assertThat(result.isApplicable("rule", request)).isFalse();
+    }
+
+    @Test(groups = "unit")
     public void faultInjectionRule_metadataRequestConfig() {
         // validate for metadata request, only CONNECTION_DELAY, RESPONSE_DELAY, TOO_MANY_REQUEST error type supported
         List<FaultInjectionOperationType> metadataOperationTypes =
@@ -61,7 +88,8 @@ public class FaultInjectionUnitTest {
             Arrays.asList(
                 FaultInjectionServerErrorType.TOO_MANY_REQUEST,
                 FaultInjectionServerErrorType.CONNECTION_DELAY,
-                FaultInjectionServerErrorType.RESPONSE_DELAY);
+                FaultInjectionServerErrorType.RESPONSE_DELAY,
+                FaultInjectionServerErrorType.AAD_TOKEN_REVOKED);
 
 
         for (FaultInjectionOperationType faultInjectionOperationTpe : FaultInjectionOperationType.values()) {
@@ -75,8 +103,12 @@ public class FaultInjectionUnitTest {
                 boolean isSupportedMetadataErrorType =
                     validMetadataServerErrorTypes.contains(faultInjectionServerErrorType)
                         || (isPartitionKeyRangeMetadataRequest && isPartitionKeyRangeMetadataNotFound);
+                boolean isUnsupportedDirectCaeError =
+                    faultInjectionServerErrorType == FaultInjectionServerErrorType.AAD_TOKEN_REVOKED
+                        && !metadataOperationTypes.contains(faultInjectionOperationTpe);
 
-                if (metadataOperationTypes.contains(faultInjectionOperationTpe) && !isSupportedMetadataErrorType) {
+                if ((metadataOperationTypes.contains(faultInjectionOperationTpe) && !isSupportedMetadataErrorType)
+                    || isUnsupportedDirectCaeError) {
                     try {
                         new FaultInjectionRuleBuilder("metadataRule")
                             .condition(new FaultInjectionConditionBuilder().operationType(faultInjectionOperationTpe).build())

@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 package com.azure.cosmos.implementation;
 
+import com.azure.cosmos.CosmosException;
 import com.azure.cosmos.implementation.http.HttpHeaders;
 import reactor.core.publisher.Mono;
 
@@ -18,5 +19,14 @@ public interface IAuthorizationTokenProvider {
     Mono<RxDocumentServiceRequest> populateAuthorizationHeader(RxDocumentServiceRequest request);
     Mono<HttpHeaders> populateAuthorizationHeader(HttpHeaders httpHeaders);
 
+    default Mono<HttpHeaders> populateAuthorizationHeader(HttpHeaders httpHeaders,
+        RxDocumentServiceRequest request) {
+        return populateAuthorizationHeader(httpHeaders);
+    }
+
     AuthorizationTokenType getAuthorizationTokenType();
+
+    default Mono<String> getCaeAuthorizationToken(CosmosException cosmosException) {
+        return Mono.empty();
+    }
 }

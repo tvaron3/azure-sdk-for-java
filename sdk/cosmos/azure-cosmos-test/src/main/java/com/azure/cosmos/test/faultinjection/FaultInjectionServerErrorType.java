@@ -61,5 +61,8 @@ public enum FaultInjectionServerErrorType {
     PARTITION_IS_GONE,
 
     /** 410-1022 from server */
-    LEASE_NOT_FOUND;
+    LEASE_NOT_FOUND,
+
+    /** 401 CAE claims challenge. Only applicable for gateway connection type. */
+    AAD_TOKEN_REVOKED;
 }
