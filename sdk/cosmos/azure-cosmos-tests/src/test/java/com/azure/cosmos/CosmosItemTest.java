@@ -29,6 +29,7 @@ import com.azure.cosmos.models.FeedRange;
 import com.azure.cosmos.models.FeedResponse;
 import com.azure.cosmos.models.ModelBridgeInternal;
 import com.azure.cosmos.models.PartitionKey;
+import com.azure.cosmos.models.SqlParameter;
 import com.azure.cosmos.models.SqlQuerySpec;
 import com.azure.cosmos.rx.TestSuiteBase;
 import com.azure.cosmos.test.faultinjection.CosmosFaultInjectionHelper;
@@ -80,6 +81,7 @@ public class CosmosItemTest extends TestSuiteBase {
     private static final Duration EVENTUAL_CONSISTENCY_QUERY_RETRY_DELAY = Duration.ofMillis(500);
 
     private static final Duration EVENTUAL_CONSISTENCY_QUERY_MAX_RETRY_DURATION = Duration.ofSeconds(15);
+    private static final Duration LARGE_ITEM_NETWORK_REQUEST_TIMEOUT = Duration.ofSeconds(10);
 
     private final static
     ImplementationBridgeHelpers.CosmosDiagnosticsHelper.CosmosDiagnosticsAccessor diagnosticsAccessor =
@@ -88,6 +90,7 @@ public class CosmosItemTest extends TestSuiteBase {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private CosmosClient client;
     private CosmosContainer container;
+    private String databaseId;
 
     @Factory(dataProvider = "clientBuildersWithDirect")
     public CosmosItemTest(CosmosClientBuilder clientBuilder) {
@@ -99,7 +102,8 @@ public class CosmosItemTest extends TestSuiteBase {
         assertThat(this.client).isNull();
         this.client = getClientBuilder().buildClient();
         CosmosAsyncContainer asyncContainer = getSharedMultiPartitionCosmosContainer(this.client.asyncClient());
-        container = client.getDatabase(asyncContainer.getDatabase().getId()).getContainer(asyncContainer.getId());
+        this.databaseId = asyncContainer.getDatabase().getId();
+        container = client.getDatabase(this.databaseId).getContainer(asyncContainer.getId());
     }
 
     @AfterClass(groups = {"fast"}, timeOut = SHUTDOWN_TIMEOUT, alwaysRun = true)
@@ -142,13 +146,36 @@ public class CosmosItemTest extends TestSuiteBase {
 
     @Test(groups = { "fast" }, timeOut = TIMEOUT)
     public void createLargeItem() throws Exception {
+        if (getConnectionPolicy().getConnectionMode() == ConnectionMode.DIRECT) {
+            DirectConnectionConfig directConnectionConfig = DirectConnectionConfig.getDefaultConfig()
+                .setNetworkRequestTimeout(LARGE_ITEM_NETWORK_REQUEST_TIMEOUT);
+            CosmosClientBuilder largeItemClientBuilder = copyCosmosClientBuilder(getClientBuilder())
+                .directMode(directConnectionConfig);
+            BridgeInternal.injectConfigs(
+                largeItemClientBuilder,
+                BridgeInternal.extractConfigs(getClientBuilder()));
+            try (CosmosClient largeItemClient = largeItemClientBuilder.buildClient()) {
+
+                CosmosContainer largeItemContainer = largeItemClient
+                    .getDatabase(this.databaseId)
+                    .getContainer(this.container.getId());
+                createAndValidateLargeItem(largeItemContainer);
+            }
+            return;
+        }
+
+        createAndValidateLargeItem(this.container);
+    }
+
+    private void createAndValidateLargeItem(CosmosContainer targetContainer) {
         InternalObjectNode docDefinition = getDocumentDefinition(UUID.randomUUID().toString());
 
         //Keep size as ~ 1.5MB to account for size of other props
         int size = (int) (ONE_MB * 1.5);
         docDefinition.set("largeString", StringUtils.repeat("x", size));
 
-        CosmosItemResponse<InternalObjectNode> itemResponse = container.createItem(docDefinition, new CosmosItemRequestOptions());
+        CosmosItemResponse<InternalObjectNode> itemResponse
+            = targetContainer.createItem(docDefinition, new CosmosItemRequestOptions());
 
         validateItemResponse(docDefinition, itemResponse);
     }
@@ -1286,23 +1313,23 @@ public class CosmosItemTest extends TestSuiteBase {
 
     @Test(groups = { "fast" }, timeOut = TIMEOUT)
     public void distinctQueryItems() throws Exception{
-
-        for (int i = 0; i < 10; i++) {
+        String partitionKey = UUID.randomUUID().toString();
+        for (int i = 0; i < 2; i++) {
             container.createItem(
-                getDocumentDefinition(UUID.randomUUID().toString(), "somePartitionKey")
+                getDocumentDefinition(UUID.randomUUID().toString(), partitionKey)
             );
         }
 
-        String query = "SELECT DISTINCT c.mypk from c";
+        SqlQuerySpec query = new SqlQuerySpec(
+            "SELECT DISTINCT VALUE c.mypk FROM c WHERE c.mypk = @partitionKey",
+            Arrays.asList(new SqlParameter("@partitionKey", partitionKey)));
         CosmosQueryRequestOptions cosmosQueryRequestOptions = new CosmosQueryRequestOptions();
 
-        CosmosPagedIterable<PartitionKeyWrapper> feedResponseIterator1 =
-            container.queryItems(query, cosmosQueryRequestOptions, PartitionKeyWrapper.class);
-
-        // Very basic validation
-        assertThat(feedResponseIterator1.iterator().hasNext()).isTrue();
-        long totalRecordCount = feedResponseIterator1.stream().count();
-        assertThat(totalRecordCount == 1L);
+        List<String> distinctPartitionKeys = container
+            .queryItems(query, cosmosQueryRequestOptions, String.class)
+            .stream()
+            .collect(Collectors.toList());
+        assertThat(distinctPartitionKeys).containsExactly(partitionKey);
     }
 
     @Test(groups = { "fast" }, timeOut = TIMEOUT)
