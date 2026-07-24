@@ -849,6 +849,21 @@ private class BulkWriter
       log.logDebug(s"for itemId=[${context.itemId}], partitionKeyValue=[${context.partitionKeyValue}], " +
         s"ignored encountered status code '$effectiveStatusCode:$effectiveSubStatusCode', " +
         s"Context: ${operationContext.toString}")
+      // Track ignored/skipped operations via the metrics publisher (recordCount=0) so operators can
+      // distinguish expected skips (e.g., not-found or predicate-412 ignores) from normal write progress.
+      val diagnosticsOpt = Option(itemResponse) match {
+        case Some(r) => Option.apply(r.getCosmosDiagnostics)
+        case None => responseException match {
+          case Some(e) => Option.apply(e.getDiagnostics)
+          case None => None
+        }
+      }
+      outputMetricsPublisher.trackWriteOperation(
+        0,
+        diagnosticsOpt match {
+          case Some(diagnostics) => Option.apply(diagnostics.getDiagnosticsContext)
+          case None => None
+        })
       totalSuccessfulIngestionMetrics.getAndIncrement()
       // work done
     } else if (shouldRetry(effectiveStatusCode, effectiveSubStatusCode, context)) {

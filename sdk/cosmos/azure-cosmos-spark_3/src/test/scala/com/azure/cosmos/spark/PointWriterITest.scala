@@ -1009,6 +1009,116 @@ class PointWriterITest extends IntegrationSpec with CosmosClient with AutoCleana
     objectMapper.writeValueAsString(updatedItem) shouldEqual objectMapper.writeValueAsString(originalItem)
   }
 
+  "Point Writer" can "skip 412 for patchIfExists item with condition when filterPredicateIgnorePreconditionFailures is enabled" in {
+    val container = getContainer
+    val containerProperties = container.read().block().getProperties
+    val partitionKeyDefinition = containerProperties.getPartitionKeyDefinition
+    val strippedPartitionKeyPath = CosmosPatchTestHelper.getStrippedPartitionKeyPath(partitionKeyDefinition)
+    val writeConfig = CosmosWriteConfig(
+      ItemWriteStrategy.ItemOverwrite,
+      5,
+      bulkEnabled = false,
+      bulkTransactional = false)
+
+    val pointWriter = new PointWriter(
+      container,
+      partitionKeyDefinition,
+      writeConfig,
+      DiagnosticsConfig(),
+      MockTaskContext.mockTaskContext(),
+      new TestOutputMetricsPublisher)
+
+    // First create one item, as patch can only operate on existing items
+    val itemWithFullSchema = CosmosPatchTestHelper.getPatchItemWithFullSchema(UUID.randomUUID().toString, strippedPartitionKeyPath)
+    val id = itemWithFullSchema.get("id").textValue()
+    val partitionKey = new PartitionKey(itemWithFullSchema.get(strippedPartitionKeyPath).textValue())
+
+    pointWriter.scheduleWrite(partitionKey, itemWithFullSchema)
+    pointWriter.flushAndClose()
+    val originalItem = container.readItem(id, partitionKey, classOf[ObjectNode]).block().getItem
+
+    val partialUpdateSchema = StructType(Seq(
+      StructField("propInt", IntegerType)
+    ))
+
+    val patchPartialUpdateItem =
+      CosmosPatchTestHelper.getPatchItemWithSchema(
+        strippedPartitionKeyPath,
+        partialUpdateSchema,
+        originalItem)
+
+    val columnConfigsMap = new TrieMap[String, CosmosPatchColumnConfig]
+    patchPartialUpdateItem.fields().asScala.foreach(field => {
+      columnConfigsMap += field.getKey -> CosmosPatchColumnConfig(
+        field.getKey, CosmosPatchOperationTypes.Set, s"/${field.getKey}", isRawJson = false)
+    })
+
+    val pointWriterForPatch =
+      CosmosPatchTestHelper.getPointWriterForPatch(
+        columnConfigsMap,
+        container,
+        partitionKeyDefinition,
+        Some(s"from c where c.propInt > ${Integer.MAX_VALUE}"), // using an always false condition
+        filterPredicateIgnorePreconditionFailures = true,
+        itemWriteStrategy = ItemWriteStrategy.ItemPatchIfExists)
+
+    // the item exists, so the predicate-412 OR-branch (not the not-found branch) is exercised here;
+    // with the flag enabled, the 412 raised by the always-false filter should be skipped, not thrown
+    pointWriterForPatch.scheduleWrite(partitionKey, patchPartialUpdateItem)
+    pointWriterForPatch.flushAndClose()
+
+    // since the condition is always false, the item should not be updated even though no exception was thrown
+    val updatedItem: ObjectNode = container.readItem(id, partitionKey, classOf[ObjectNode]).block().getItem
+    objectMapper.writeValueAsString(updatedItem) shouldEqual objectMapper.writeValueAsString(originalItem)
+  }
+
+  "Point Writer" can "skip not-found for patchIfExists item when the item does not exist" in {
+    val container = getContainer
+    val containerProperties = container.read().block().getProperties
+    val partitionKeyDefinition = containerProperties.getPartitionKeyDefinition
+    val strippedPartitionKeyPath = CosmosPatchTestHelper.getStrippedPartitionKeyPath(partitionKeyDefinition)
+
+    // an item that has never been created, so patchIfExists should hit the not-found OR-branch
+    val nonExistentItem = CosmosPatchTestHelper.getPatchItemWithFullSchema(UUID.randomUUID().toString, strippedPartitionKeyPath)
+    val id = nonExistentItem.get("id").textValue()
+    val partitionKey = new PartitionKey(nonExistentItem.get(strippedPartitionKeyPath).textValue())
+
+    val partialUpdateSchema = StructType(Seq(
+      StructField("propInt", IntegerType)
+    ))
+
+    val patchPartialUpdateItem =
+      CosmosPatchTestHelper.getPatchItemWithSchema(
+        strippedPartitionKeyPath,
+        partialUpdateSchema,
+        nonExistentItem)
+
+    val columnConfigsMap = new TrieMap[String, CosmosPatchColumnConfig]
+    patchPartialUpdateItem.fields().asScala.foreach(field => {
+      columnConfigsMap += field.getKey -> CosmosPatchColumnConfig(
+        field.getKey, CosmosPatchOperationTypes.Set, s"/${field.getKey}", isRawJson = false)
+    })
+
+    val pointWriterForPatch =
+      CosmosPatchTestHelper.getPointWriterForPatch(
+        columnConfigsMap,
+        container,
+        partitionKeyDefinition,
+        itemWriteStrategy = ItemWriteStrategy.ItemPatchIfExists)
+
+    // the item was never created, so the not-found should be skipped rather than throwing
+    pointWriterForPatch.scheduleWrite(partitionKey, patchPartialUpdateItem)
+    pointWriterForPatch.flushAndClose()
+
+    // the item should still not exist since patchIfExists is a no-op for missing items
+    try {
+      container.readItem(id, partitionKey, classOf[ObjectNode]).block()
+      fail("Item should not exist since patchIfExists is a no-op for missing items")
+    } catch {
+      case e: CosmosException => e.getStatusCode shouldEqual 404
+    }
+  }
+
   "Point Writer" should "throw exception if no valid operations are included in patch operation" in {
     val container = getContainer
     val containerProperties = container.read().block().getProperties
